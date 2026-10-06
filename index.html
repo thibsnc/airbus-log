@@ -1089,11 +1089,12 @@ function showKey(msg){
 }
 document.getElementById("keyform").addEventListener("submit",async e=>{
   e.preventDefault();
-  const k=document.getElementById("keyin").value.trim(); const msg=document.getElementById("keymsg"); const go=document.getElementById("keygo");
+  const k=document.getElementById("keyin").value.trim();
+  if(/^https?:/i.test(k)){ document.getElementById("keymsg").textContent="Ça, c'est le lien du roster. Entre ta clé personnelle (24 lettres et chiffres)."; return; } const msg=document.getElementById("keymsg"); const go=document.getElementById("keygo");
   if(!k){ msg.textContent="Entre ta clé."; return; }
   go.disabled=true; msg.textContent="Vérification…";
   try{ await fetchRoster(k); apiKey=k; store.set("key",k); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); fetchWx().catch(()=>{}); anchorToday(); }
-  catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : "Connexion impossible. Vérifie ton réseau et réessaie."; }
+  catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
   go.disabled=false;
 });
 document.getElementById("s-key").onclick=()=>{ closeSheet(); showKey(); };
