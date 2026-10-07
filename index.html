@@ -327,6 +327,24 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .sumwrap .stat{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:6px 9px;border-radius:10px}
 .sumwrap .stat .k{font-size:9px;letter-spacing:.06em}
 .sumwrap .stat .v{font-size:15.5px}
+/* ---- landscape (phone on its side) ---- */
+.brandbar{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px))}
+main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px))}
+.tabs{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+@media (orientation:landscape) and (max-height:520px){
+  .top{position:relative}
+  .dgroup,#panel,.panel{scroll-margin-top:8px}
+  .tabs{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 4px)}
+  .tab{padding:5px 0 4px;grid-auto-flow:column;gap:6px;align-items:center;justify-content:center}
+  .tab svg{width:20px;height:20px}
+  main{padding-block:10px calc(70px + env(safe-area-inset-bottom,0px))}
+  .sumwrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px;align-items:stretch}
+  .sumwrap .next{margin-bottom:0}
+  .sumwrap .stats{align-content:stretch}
+  .ctrl,.strip,.sumwrap,.brandbar .in{max-width:1100px}
+  main{max-width:1100px}
+  .toast{bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
 @media (max-width:400px){.brandbar .in{gap:8px}.logo .s{letter-spacing:.28em}.mid b{font-size:15px}.right{font-size:13px}.ev > summary{grid-template-columns:36px minmax(0,1fr) auto 12px;gap:8px}}
 </style>
