@@ -396,7 +396,7 @@ img{max-width:100%}
       <button class="btn" id="s-refresh">Mettre à jour maintenant</button>
       <label class="btn ghost file">Importer un .ics<input type="file" id="ics-file" accept=".ics,text/calendar"></label>
     </div>
-    <p class="note">Ton roster, les METAR et les TAF sont relus à chaque ouverture de l'app, toutes les 10 minutes, et quand tu touches « Mettre à jour ».</p>
+    <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
     <button class="btn ghost" id="s-key">Changer de clé</button>
     <button class="btn ghost" id="s-close">Fermer</button>
   </div>
@@ -1045,20 +1045,32 @@ document.getElementById("t-stats").onclick=()=>{ if(state.view==="stats") return
 document.getElementById("tz-nou").onclick=()=>{ state.tz="NOU"; store.set("tz","NOU"); render(); tick(); };
 document.getElementById("tz-utc").onclick=()=>{ state.tz="UTC"; store.set("tz","UTC"); render(); tick(); };
 
-const API="https://airbus-log-api.thibaut-sola.workers.dev";
 let apiKey=store.get("key")||"";
-async function api(path,key){
-  const k=key||apiKey;
-  const r=await fetch(API+path+(path.includes("?")?"&":"?")+"key="+encodeURIComponent(k),{cache:"no-store"});
-  if(r.status===401){ const e=new Error("unauthorized"); e.code=401; throw e; }
-  if(!r.ok){ const e=new Error("http "+r.status); e.code=r.status; throw e; }
-  return r;
+const b64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+const keyCache=new Map();
+async function decryptData(env,pass){
+  const id=pass+"|"+env.salt; let k=keyCache.get(id);
+  if(!k){
+    const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+    k=await crypto.subtle.deriveKey({name:"PBKDF2",salt:b64(env.salt),iterations:150000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+    keyCache.clear(); keyCache.set(id,k);
+  }
+  try{ const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64(env.iv)},k,b64(env.ct)); return JSON.parse(new TextDecoder().decode(pt)); }
+  catch(e){ const err=new Error("wrong key"); err.code=401; throw err; }
 }
-async function fetchRoster(key){
-  const t=await (await api("/roster",key)).text();
-  if(!t.includes("BEGIN:VCALENDAR")){ const e=new Error("bad ics"); e.code="ics"; throw e; }
-  load(t,new Date().toISOString(),!state.events.length);
-  syncArchive();
+async function fetchData(key){
+  let r;
+  try{ r=await fetch("data.json?t="+Date.now(),{cache:"no-store"}); }catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
+  if(r.status===404){ const err=new Error("data.json absent"); err.code=404; throw err; }
+  if(!r.ok){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
+  const d=await decryptData(await r.json(),key||apiKey);
+  if(d.ics && d.ics.includes("BEGIN:VCALENDAR")){ load(d.ics,d.fetchedAt,!state.events.length); syncArchive(); }
+  if(d.metar||d.taf){
+    wx.metars=parseMetars(d.metar); wx.tafs=parseTafs(d.taf); wx.fetchedAt=d.fetchedAt;
+    store.set("wx",{metars:wx.metars,tafs:wx.tafs,fetchedAt:wx.fetchedAt});
+    renderWx(); if(!document.getElementById("wxsheet").hidden) renderWxSheet();
+  }
+  return d;
 }
 let busy=false, lastRefresh=0;
 async function refreshAll(manual){
@@ -1067,9 +1079,10 @@ async function refreshAll(manual){
   const btns=[document.getElementById("b-refresh"),document.getElementById("s-refresh")];
   btns.forEach(b=>b.disabled=true);
   let ok=true;
-  try{ await fetchRoster(); }
-  catch(e){ ok=false; if(e.code===401){ showKey("Ta clé n'est plus acceptée. Entre-la de nouveau."); } else if(manual){ toast(navigator.onLine===false?"Pas de connexion : dernière version du roster affichée.":"Roster injoignable pour l'instant : dernière version gardée."); } }
-  try{ await fetchWx(); }catch(e){ if(ok && manual) toast("Météo injoignable pour l'instant."); ok=false; }
+  try{ await fetchData(); }
+  catch(e){ ok=false;
+    if(e.code===401) showKey("Ta clé ne correspond plus aux données. Entre-la de nouveau.");
+    else if(manual) toast(e.code===404?"Données pas encore publiées. Réessaie dans quelques minutes.":navigator.onLine===false?"Pas de connexion : dernière version affichée.":"Mise à jour impossible pour l'instant : dernière version gardée."); }
   btns.forEach(b=>b.disabled=false); busy=false;
   if(ok && manual) toast("Roster et météo à jour");
 }
@@ -1093,8 +1106,8 @@ document.getElementById("keyform").addEventListener("submit",async e=>{
   if(/^https?:/i.test(k)){ document.getElementById("keymsg").textContent="Ça, c'est le lien du roster. Entre ta clé personnelle (24 lettres et chiffres)."; return; } const msg=document.getElementById("keymsg"); const go=document.getElementById("keygo");
   if(!k){ msg.textContent="Entre ta clé."; return; }
   go.disabled=true; msg.textContent="Vérification…";
-  try{ await fetchRoster(k); apiKey=k; store.set("key",k); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); fetchWx().catch(()=>{}); anchorToday(); }
-  catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
+  try{ await fetchData(k); apiKey=k; store.set("key",k); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); }
+  catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : err.code===404 ? "Les données ne sont pas encore publiées. Réessaie dans quelques minutes." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
   go.disabled=false;
 });
 document.getElementById("s-key").onclick=()=>{ closeSheet(); showKey(); };
@@ -1143,12 +1156,7 @@ function renderWxSheet(){
   const ids=[...new Set([shown,...(st.flight?st.list:[])])];
   const age=t=>{ const m=Math.round((Date.now()-new Date(t).getTime())/6e4); return m<1?"à l'instant":m<60?`il y a ${m} min`:`il y a ${Math.round(m/60)} h`; };
   document.getElementById("wx-list").innerHTML=ids.map(id=>`<div class="metarfull"><b>${esc(id)}${WX_FAV[id]?" · "+esc(WX_FAV[id]):""}<span>${id===st.main&&st.flight?"vol du jour":""}</span></b><div class="lab">METAR</div><pre>${esc(wx.metars[id]||"Pas de METAR disponible")}</pre><div class="lab">TAF</div><pre>${esc((wx.tafs&&wx.tafs[id])||"TAF pas encore disponible")}</pre></div>`).join("");
-  document.getElementById("wx-age").textContent = wx.fetchedAt ? `Relu ${age(wx.fetchedAt)}. METAR et TAF sont relus toutes les 10 minutes, et quand tu touches « Mettre à jour ».` : "Les METAR arrivent à la prochaine relecture.";
-}
-function wxIds(){
-  const st=wxStations(); const now=Date.now();
-  const soon=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.arr>now&&e.dep<now+36*36e5).flatMap(e=>[icao(e.from),icao(e.to)]);
-  return [...new Set(["NWWW",...Object.keys(WX_FAV),...st.list,...soon].filter(c=>/^[A-Z]{4}$/.test(c)))].sort();
+  document.getElementById("wx-age").textContent = wx.fetchedAt ? `Relu ${age(wx.fetchedAt)}. Roster, METAR et TAF sont republiés toutes les 30 minutes environ ; l'app récupère la dernière version à l'ouverture et quand tu touches « Mettre à jour ».` : "Les METAR arrivent à la prochaine relecture.";
 }
 function parseMetars(txt){
   const o={};
@@ -1166,12 +1174,6 @@ function parseTafs(txt){
     else if(cur && l.trim()) cur.push("  "+l.trim());
   });
   flush(); return o;
-}
-async function fetchWx(){
-  const d=await (await api("/wx?ids="+wxIds().join(","))).json();
-  wx.metars=parseMetars(d.metar); wx.tafs=parseTafs(d.taf); wx.fetchedAt=d.fetchedAt||new Date().toISOString();
-  store.set("wx",{metars:wx.metars,tafs:wx.tafs,fetchedAt:wx.fetchedAt});
-  renderWx(); if(!document.getElementById("wxsheet").hidden) renderWxSheet();
 }
 const wxSheet=document.getElementById("wxsheet");
 document.getElementById("wx-open").onclick=()=>{ closeWxMenu(); renderWxSheet(); wxSheet.hidden=false; scrim.hidden=false; };

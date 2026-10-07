@@ -5,7 +5,9 @@ liste et calendrier, METAR/TAF, export logbook (LogTen Pro, PILOTLOG) et statist
 
 - `index.html` : l'application (hébergée par GitHub Pages).
 - `manifest.webmanifest`, `sw.js`, `icons/` : installation sur l'écran d'accueil et usage hors ligne.
-- `worker/` : Cloudflare Worker qui relaie le flux du roster et la météo aéronautique.
+- `scripts/build-site.mjs` et `.github/workflows/publish.yml` : toutes les 30 minutes, GitHub Actions
+  récupère le roster et les METAR/TAF, les chiffre (AES-GCM) et publie `data.json` avec l'app.
 
 Aucune donnée personnelle n'est stockée dans ce dépôt : le lien du roster et la clé d'accès
-sont des secrets configurés dans Cloudflare, et la clé est saisie une fois dans l'app.
+sont des secrets GitHub Actions (`ICS_URL`, `APP_KEY`). Les données publiées sont chiffrées :
+seule la clé saisie dans l'app permet de les lire.
