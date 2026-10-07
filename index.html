@@ -167,6 +167,25 @@ body{--dayc:#a77df0;--nightc:#4f30b8}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .btn.alt{background:var(--accent)}
 .copyarea{width:100%;min-height:110px;font-family:var(--f-mono);font-size:11px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);padding:8px}
+.lbtabs{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.ltc{gap:9px}
+.ltc-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ltc-h b{font-family:var(--f-mono);font-size:16px}
+.ltc-h .r{font-weight:800;font-size:16px;color:var(--brand-text)}
+.ltc-h small{margin-left:auto;color:var(--muted);font-size:12px;font-weight:600}
+.ltc-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ltc-g label{display:grid;gap:3px;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:0}
+.ltc-g input{font:inherit;font-family:var(--f-mono);font-size:17px;font-weight:600;text-align:center;padding:9px 2px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);min-width:0;width:100%}
+.ltc-g input:focus{outline:2px solid var(--sky);outline-offset:0}
+.ltc-g input::placeholder{color:color-mix(in srgb,var(--muted) 50%,transparent);font-weight:500}
+.ltc-g input.bad{border-color:var(--accent)}
+.ltc-sum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.ltc-sum b{font-family:var(--f-mono);color:var(--fg)}
+.ltc-type{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600}
+.ltc-type input{font:inherit;font-weight:700;width:90px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);text-transform:uppercase}
+.ltc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ltc-ok{font-size:12px;font-weight:700;color:var(--green)}
+.ltc-err{font-size:12.5px;font-weight:600;color:var(--accent)}
 .warn{font-size:12.5px;color:var(--fg);background:color-mix(in srgb,var(--gold) 22%,var(--surface));border-radius:10px;padding:8px 10px}
 .sumwrap{max-width:760px;margin:0 auto;padding:0 16px 10px}
 .sumwrap .next{padding:9px 12px;margin-bottom:8px;gap:2px 10px}
@@ -881,7 +900,7 @@ const dmy=t=>{const d=new Date(t);return pad(d.getUTCDate())+"/"+pad(d.getUTCMon
 const ymd=t=>{const d=new Date(t);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());};
 function capacity(role){ const r=(role||"").toUpperCase(); if(/^(CPT|CDB|CMD)/.test(r)) return "PIC"; if(/^(F\/O|OPL|FO|SIC)/.test(r)) return "SIC"; return ""; }
 function crewName(ev,re){ for(const g of ev.crew){ if(re.test(g.role)){ const p=g.people.find(x=>x.code!==ME); if(p) return p.name; } } return ""; }
-const lbState={ period:"month", mep:false, skip:new Set(), types: store.get("types")||{} };
+const lbState={ period:"month", mep:false, skip:new Set(), types: store.get("types")||{}, sub: store.get("lbsub")||"logten" };
 function lbFlights(){
   const now=Date.now(); const t=todayKey(); const y=+t.slice(0,4), m=+t.slice(5,7);
   let from=-Infinity, to=now;
@@ -928,7 +947,99 @@ async function copyText(text, fallbackId){
   try{ await navigator.clipboard.writeText(text); toast("Copié"); }
   catch(e){ const ta=document.getElementById(fallbackId); if(ta){ ta.hidden=false; ta.value=text; ta.focus(); ta.select(); toast("Sélectionné : copie-le avec Copier"); } }
 }
-function renderLog(){
+/* ---------- LogTen quick entry ---------- */
+const LT_FIELDS=[["out","Block out"],["off","Takeoff"],["on","Landing"],["in","Block in"]];
+let ltData=store.get("ltForm")||{};
+function ltSave(){ store.set("ltForm",ltData); }
+function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).sort((a,b)=>b.dep-a.dep); }
+function parseHHMM(v){ const d=(v||"").replace(/\D/g,""); if(d.length<3) return null; const h=+d.slice(0,-2), m=+d.slice(-2); if(h>23||m>59) return null; return h*60+m; }
+function fmtHHMM(v){ const d=(v||"").replace(/\D/g,"").slice(0,4); return d.length>=3 ? d.slice(0,-2).padStart(2,"0")+":"+d.slice(-2) : d; }
+function nearTs(min,ref){ const d=new Date(ref); let best=null; for(const k of [-1,0,1]){ const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()+k,Math.floor(min/60),min%60); if(best===null||Math.abs(t-ref)<Math.abs(best-ref)) best=t; } return best; }
+function ltTimes(e){
+  const d=ltData[e.id]||{}, refs={out:e.dep,off:e.dep,on:e.arr,in:e.arr}, o={};
+  for(const [k] of LT_FIELDS){ const m=parseHHMM(d[k]); o[k]=m==null?null:nearTs(m,refs[k]); }
+  // keep the chain in order across midnight
+  if(o.off!=null&&o.out!=null&&o.off<o.out) o.off+=864e5;
+  if(o.on!=null&&o.off!=null&&o.on<o.off) o.on+=864e5;
+  if(o.in!=null&&o.on!=null&&o.in<o.on) o.in+=864e5;
+  return o;
+}
+function ltCheck(e){
+  const t=ltTimes(e);
+  if(LT_FIELDS.some(([k])=>t[k]==null)) return { ok:false, t, msg:"" };
+  const block=t.in-t.out;
+  if(block<=0||block>20*36e5) return { ok:false, t, msg:"Vérifie les heures : le block dépasse 20 h ou est négatif." };
+  return { ok:true, t, block:Math.round(block/6e4), air:Math.round((t.on-t.off)/6e4) };
+}
+function ltURL(e,t){
+  const reg=fmtReg(e.reg), type=(lbState.types[reg]||"").toUpperCase(), cap=capacity(e.role);
+  const block=hmm(Math.round((t.in-t.out)/6e4)), f=ts=>dmy(ts)+" "+hmUTC(ts);
+  const o={ entity_name:"Flight", flight_key:"airbuslog-"+e.flight+"-"+ymd(e.dep).replace(/-/g,"")+"-"+e.from,
+    flight_flightDate:dmy(t.out), flight_flightNumber:e.flight, flight_from:icao(e.from), flight_to:icao(e.to),
+    flight_scheduledDepartureTime:f(e.dep), flight_scheduledArrivalTime:f(e.arr),
+    flight_actualDepartureTime:f(t.out), flight_takeoffTime:f(t.off), flight_landingTime:f(t.on), flight_actualArrivalTime:f(t.in),
+    flight_selectedAircraftID:reg, flight_totalTime:block, flight_remarks:"ACI LOG"+(e.role?" · fonction "+e.role:"") };
+  if(type) o.flight_selectedAircraftType=type;
+  if(cap==="PIC") o.flight_pic=block;
+  if(cap==="SIC") o.flight_sic=block;
+  const pic=cap==="PIC"?"":crewName(e,/^CPT/), sic=cap==="SIC"?"":crewName(e,/^F\/O/);
+  if(pic) o.flight_selectedCrewPIC=pic;
+  if(sic) o.flight_selectedCrewSIC=sic;
+  const pkg={ metadata:{ application:"ACI LOG", version:"1.0", dateFormat:"dd/MM/yyyy", dateAndTimeFormat:"dd/MM/yyyy HH:mm", timesAreZulu:true }, entities:[o] };
+  return "logten://v2/addEntities?package="+encodeURIComponent(JSON.stringify(pkg));
+}
+function ltSummary(e){
+  const c=ltCheck(e);
+  if(!c.ok) return c.msg?`<span class="ltc-err">${esc(c.msg)}</span>`:`<span>Block <b>—</b></span><span>Air time <b>—</b></span>`;
+  return `<span>Block <b>${hmm(c.block)}</b></span><span>Air time <b>${hmm(c.air)}</b></span><span>Prévu <b>${hmm(Math.round((e.arr-e.dep)/6e4))}</b></span>`;
+}
+function renderLogTen(){
+  const v=document.getElementById("view"); const fl=ltFlights();
+  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
+  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125), puis touche « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  if(!fl.length) h+=`<div class="box"><p>Aucun vol sur les 45 derniers jours.</p></div>`;
+  for(const e of fl){
+    const d=ltData[e.id]||{}, reg=fmtReg(e.reg), c=ltCheck(e);
+    const ph={out:hmUTC(e.dep),off:"",on:"",in:hmUTC(e.arr)};
+    h+=`<div class="box ltc" data-id="${esc(e.id)}">
+      <div class="ltc-h"><b>${esc(e.flight)}</b><span class="r">${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(reg)}${e.role?" · "+esc(e.role):""}</small></div>
+      <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
+      <div class="ltc-sum">${ltSummary(e)}</div>
+      ${reg && !(lbState.types[reg]||"").trim() ? `<label class="ltc-type">Type ${esc(reg)} <input id="lt-type-${esc(e.id)}" data-reg="${esc(reg)}" placeholder="A20N" autocomplete="off"></label>`:""}
+      <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}</div>
+    </div>`;
+  }
+  h+=`</div>`;
+  v.innerHTML=h; bindLbTabs(v);
+  v.querySelectorAll(".ltc").forEach(card=>{
+    const id=card.dataset.id, e=fl.find(x=>x.id===id); if(!e) return;
+    const refresh=()=>{ const c=ltCheck(e); card.querySelector(".ltc-sum").innerHTML=ltSummary(e); card.querySelector('[data-act="import"]').disabled=!c.ok; };
+    card.querySelectorAll(".ltc-g input").forEach((inp,i,all)=>{
+      inp.addEventListener("input",()=>{
+        const digits=inp.value.replace(/\D/g,"").slice(0,4);
+        ltData[id]=Object.assign({},ltData[id],{[inp.dataset.k]:digits}); ltSave();
+        inp.classList.toggle("bad", digits.length===4 && parseHHMM(digits)==null);
+        refresh();
+        if(digits.length===4 && parseHHMM(digits)!=null){ inp.value=fmtHHMM(digits); if(all[i+1]) all[i+1].focus(); }
+      });
+      inp.addEventListener("blur",()=>{ inp.value=fmtHHMM(inp.value); });
+      inp.addEventListener("focus",()=>{ inp.value=inp.value.replace(/\D/g,""); });
+    });
+    const ty=card.querySelector(".ltc-type input");
+    if(ty) ty.addEventListener("change",()=>{ lbState.types[ty.dataset.reg]=ty.value.trim().toUpperCase(); store.set("types",lbState.types); });
+    card.querySelector('[data-act="import"]').onclick=()=>{
+      const c=ltCheck(e); if(!c.ok) return;
+      if(ty && ty.value.trim()){ lbState.types[ty.dataset.reg]=ty.value.trim().toUpperCase(); store.set("types",lbState.types); }
+      ltData[id]=Object.assign({},ltData[id],{sent:Date.now()}); ltSave();
+      location.href=ltURL(e,c.t);
+      setTimeout(()=>{ const y=scrollY; renderLogTen(); scrollTo(0,y); },800);
+    };
+  });
+}
+function renderLog(){ lbState.sub==="export" ? renderLogExport() : renderLogTen(); }
+function lbTabs(){ return `<div class="seg lbtabs" id="lb-tabs"><button data-s="logten" aria-pressed="${lbState.sub==="logten"}">LogTen</button><button data-s="export" aria-pressed="${lbState.sub==="export"}">Export</button></div>`; }
+function bindLbTabs(v){ v.querySelectorAll("#lb-tabs button").forEach(b=>b.onclick=()=>{ lbState.sub=b.dataset.s; store.set("lbsub",lbState.sub); renderLog(); window.scrollTo(0,0); }); }
+function renderLogExport(){
   const v=document.getElementById("view");
   const flights=lbFlights(); const rows=flights.map(lbRow);
   const sel=rows.filter(r=>!lbState.skip.has(r.e.id));
@@ -936,7 +1047,7 @@ function renderLog(){
   const regs=[...new Set(rows.map(r=>r.reg).filter(Boolean))];
   const missing=regs.filter(r=>!(lbState.types[r]||"").trim());
   const pBtn=(id,l)=>`<button data-p="${id}" aria-pressed="${lbState.period===id}">${l}</button>`;
-  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>`;
+  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
   h+=`<div class="box"><h3>Vols à exporter</h3><div class="seg" id="lb-period">${pBtn("month","Ce mois")}${pBtn("prev","Mois dernier")}${pBtn("all","Tout")}</div>
      <label class="chk"><input type="checkbox" id="lb-mep" ${lbState.mep?"checked":""}> Inclure les mises en place (MEP)</label>`;
   if(rows.length){
@@ -960,7 +1071,7 @@ function renderLog(){
      <div class="btnrow">${sel.length?`<button class="btn" id="pl-dl">Exporter le CSV</button><button class="btn ghost" id="pl-copy">Copier le CSV</button>`:`<button class="btn" disabled>Télécharger le CSV</button>`}<a class="btn ghost" href="https://crewlounge.center/pilotlog-import-wizard" target="_blank" rel="noopener">Assistant d'import</a></div>
      <textarea class="copyarea" id="pl-ta" hidden readonly></textarea></div>`;
   h+=`</div>`;
-  v.innerHTML=h;
+  v.innerHTML=h; bindLbTabs(v);
   v.querySelectorAll("#lb-period button").forEach(b=>b.onclick=()=>{ lbState.period=b.dataset.p; renderLog(); });
   v.querySelector("#lb-mep").onchange=e=>{ lbState.mep=e.target.checked; renderLog(); };
   const rerender=()=>setTimeout(()=>{ const y=scrollY; renderLog(); scrollTo(0,y); },0);
