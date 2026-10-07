@@ -1,5 +1,5 @@
-// AIRBUS LOG service worker: app shell available offline, always fresh when online.
-const CACHE = "airbus-log-v1";
+// ACI LOG service worker: app shell available offline, always fresh when online.
+const CACHE = "aci-log-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/apple-touch-icon.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

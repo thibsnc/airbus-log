@@ -1,4 +1,4 @@
-# AIRBUS LOG
+# ACI LOG
 
 Application web personnelle (installable sur iPhone) pour consulter son roster équipage :
 liste et calendrier, METAR/TAF, export logbook (LogTen Pro, PILOTLOG) et statistiques.

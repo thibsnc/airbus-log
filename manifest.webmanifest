@@ -1,6 +1,6 @@
 {
-  "name": "AIRBUS LOG",
-  "short_name": "AIRBUS LOG",
+  "name": "ACI LOG",
+  "short_name": "ACI LOG",
   "description": "Roster équipage, METAR/TAF, logbook et statistiques.",
   "lang": "fr",
   "start_url": "./",
