@@ -684,8 +684,8 @@ function summaryHTML(){
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
   const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol");
   const tft=Math.round(fl.reduce((n,e)=>n+Math.max(0,(e.arr||e.end)-(e.dep||e.start)),0)/60000);
-  let offs=0; for(let t=ms;t<me;t+=864e5){ const l=eventsOn(dayKey(t+1)); if(l.length&&l.every(e=>e.cat==="off")) offs++; }
-  h+=`<div class="stats"><div class="stat"><div class="k">Vols ${MONTHS[m-1].slice(0,4)}.</div><div class="v">${fl.length}</div></div><div class="stat"><div class="k">Bloc</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat"><div class="k">Jours off</div><div class="v">${offs}</div></div></div>`;
+  const nowT=Date.now(); const nightMin=fl.filter(e=>(e.arr||e.end)<=nowT).reduce((n,e)=>n+(nightMinutes(e.from,e.to,e.dep||e.start,e.arr||e.end)||0),0);
+  h+=`<div class="stats"><div class="stat"><div class="k">Vols ${MONTHS[m-1].slice(0,4)}.</div><div class="v">${fl.length}</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat"><div class="k">Nuit</div><div class="v">${Math.floor(nightMin/60)}h${pad(nightMin%60)}</div></div></div>`;
   return h;
 }
 
@@ -789,7 +789,7 @@ function logtenURL(rows){
       flight_scheduledDepartureTime:dmy(r.e.dep)+" "+hmUTC(r.e.dep), flight_scheduledArrivalTime:dmy(r.e.arr)+" "+hmUTC(r.e.arr),
       flight_actualDepartureTime:dmy(r.e.dep)+" "+hmUTC(r.e.dep), flight_actualArrivalTime:dmy(r.e.arr)+" "+hmUTC(r.e.arr),
       flight_selectedAircraftID:r.reg, flight_totalTime:hmm(r.min),
-      flight_remarks:"ACI LOG"+(r.e.role?" · fonction "+r.e.role:"")+(r.e.cat==="mep"?" · MEP (passager, bloc "+hmm(r.block)+")":"") };
+      flight_remarks:"ACI LOG"+(r.e.role?" · fonction "+r.e.role:"")+(r.e.cat==="mep"?" · MEP (passager, block "+hmm(r.block)+")":"") };
     if(r.type) o.flight_selectedAircraftType=r.type;
     if(r.cap==="PIC") o.flight_pic=hmm(r.min);
     if(r.cap==="SIC") o.flight_sic=hmm(r.min);
@@ -807,7 +807,7 @@ function pilotlogCSV(rows){
   for(const r of rows){
     lines.push([ymd(r.date),r.e.flight,icao(r.e.from),icao(r.e.to),hmUTC(r.e.dep),hmUTC(r.e.arr),hmUTC(r.e.dep),hmUTC(r.e.arr),hmm(r.min),
       r.cap==="PIC"?hmm(r.min):"",r.cap==="SIC"?hmm(r.min):"",r.type,r.reg,"Aircalin",r.pic,r.sic,
-      "ACI LOG"+(r.e.role?" - fonction "+r.e.role:"")+(r.e.cat==="mep"?" - MEP (passager, bloc "+hmm(r.block)+")":"")].map(q).join(","));
+      "ACI LOG"+(r.e.role?" - fonction "+r.e.role:"")+(r.e.cat==="mep"?" - MEP (passager, block "+hmm(r.block)+")":"")].map(q).join(","));
   }
   return lines.join("\r\n")+"\r\n";
 }
@@ -828,21 +828,21 @@ function renderLog(){
      <label class="chk"><input type="checkbox" id="lb-mep" ${lbState.mep?"checked":""}> Inclure les mises en place (MEP)</label>`;
   if(rows.length){
     h+=`<ul class="lbl">`+rows.map(r=>`<li class="${lbState.skip.has(r.e.id)?"off":""}"><input type="checkbox" class="lb-one" data-id="${esc(r.e.id)}" ${lbState.skip.has(r.e.id)?"":"checked"} aria-label="Inclure ${esc(r.e.flight)}"><span class="d">${esc(dmy(r.date).slice(0,5))}</span><span class="r"><b>${esc(r.e.flight)}</b> ${esc(r.e.from)}–${esc(r.e.to)} · ${esc(r.reg)}</span><span class="bt">${hmm(r.e.cat==="mep"?r.block:r.min)}<small>${esc(r.e.cat==="mep"?"MEP":(r.e.role||"—"))}${r.cap?" · "+r.cap:""}</small></span></li>`).join("")+`</ul>
-       <div class="lbsum"><span>${sel.length} vol${sel.length>1?"s":""} sélectionné${sel.length>1?"s":""}</span><span>${hmm(total)} bloc</span></div>`;
+       <div class="lbsum"><span>${sel.length} vol${sel.length>1?"s":""} sélectionné${sel.length>1?"s":""}</span><span>${hmm(total)} block</span></div>`;
   } else h+=`<p>Aucun vol réalisé sur cette période.</p>`;
   h+=`</div>`;
   if(regs.length){
     h+=`<div class="box"><h3>Type d'avion par immatriculation</h3><p>Code OACI du type, par exemple A20N ou A339. Mémorisé sur cet appareil.</p><div class="types">`+
        regs.map(r=>`<label>${esc(r)}<input id="ty-${esc(r)}" data-reg="${esc(r)}" class="ty" value="${esc(lbState.types[r]||"")}" placeholder="Type" autocomplete="off"></label>`).join("")+`</div></div>`;
   }
-  h+=`<div class="warn">Le roster donne les heures programmées. Elles sont importées comme heures bloc : corrige-les dans ton logbook si le vol a eu de l'avance ou du retard.</div>`;
+  h+=`<div class="warn">Le roster donne les heures programmées. Elles sont importées comme heures block : corrige-les dans ton logbook si le vol a eu de l'avance ou du retard.</div>`;
   h+=`<div class="box"><div class="t">LogTen Pro</div>
      <ol><li>Sur l'iPhone où LogTen est installé, touche « Ouvrir dans LogTen ».</li><li>Si rien ne s'ouvre, touche « Copier le lien », colle-le dans la barre d'adresse de Safari et valide.</li><li>LogTen ajoute les vols. Un vol déjà envoyé est mis à jour, pas dupliqué.</li></ol>
      <div class="btnrow">${sel.length?`<a class="btn" id="lt-open" href="${esc(logtenURL(sel))}">Ouvrir dans LogTen</a><button class="btn ghost" id="lt-copy">Copier le lien</button>`:`<button class="btn" disabled>Ouvrir dans LogTen</button>`}</div>
      <textarea class="copyarea" id="lt-ta" hidden readonly></textarea></div>`;
   h+=`<div class="box"><div class="t">PILOTLOG · CrewLounge</div>
      <ol><li>Exporte le fichier CSV : enregistre-le dans Fichiers (ou copie-le).</li><li>Ouvre l'assistant d'import PILOTLOG sur crewlounge.center, connecté à ton compte.</li><li>Importe le fichier : les colonnes sont déjà au format du modèle PILOTLOG.</li></ol>
-     <p>Les MEP partent avec 0:00 de temps de vol, le bloc est noté en remarque.</p>
+     <p>Les MEP partent avec 0:00 de temps de vol, le block est noté en remarque.</p>
      ${missing.length?`<p style="color:var(--accent);font-weight:600">PILOTLOG exige le type d'avion : renseigne ${esc(missing.join(", "))} ci-dessus.</p>`:""}
      <div class="btnrow">${sel.length?`<button class="btn" id="pl-dl">Exporter le CSV</button><button class="btn ghost" id="pl-copy">Copier le CSV</button>`:`<button class="btn" disabled>Télécharger le CSV</button>`}<a class="btn ghost" href="https://crewlounge.center/pilotlog-import-wizard" target="_blank" rel="noopener">Assistant d'import</a></div>
      <textarea class="copyarea" id="pl-ta" hidden readonly></textarea></div>`;
@@ -933,11 +933,11 @@ function renderStats(){
   const planned=state.events.filter(e=>e.cat==="vol"&&e.arr>now&&monthKeyOf(e.dep)===months[11]).reduce((n,e)=>n+Math.max(0,Math.round((e.arr-e.dep)/6e4)),0);
   const first=fl.length?fl[0].dep:null;
   const H=x=>hmm(Math.round(x));
-  let h=`<div class="lb"><div class="lb-h"><h2>Statistiques</h2><span>Heures bloc réalisées</span></div>`;
+  let h=`<div class="lb"><div class="lb-h"><h2>Statistiques</h2><span>Heures block réalisées</span></div>`;
   h+=`<div class="tiles">
     <div class="tile"><div class="k">Année ${y}</div><div class="v">${H(ytd.block)}</div><div class="s">${ytd.n} vol${ytd.n>1?"s":""} · nuit ${H(ytd.night)}</div></div>
     <div class="tile"><div class="k">12 mois glissants</div><div class="v">${H(roll.block)}</div><div class="s">${roll.n} vol${roll.n>1?"s":""} · nuit ${H(roll.night)}</div></div>
-    <div class="tile"><div class="k">Nuit · année ${y}</div><div class="v">${H(ytd.night)}</div><div class="s">${ytd.block?Math.round(ytd.night/ytd.block*100):0} % du bloc</div></div>
+    <div class="tile"><div class="k">Nuit · année ${y}</div><div class="v">${H(ytd.night)}</div><div class="s">${ytd.block?Math.round(ytd.night/ytd.block*100):0} % du block</div></div>
     <div class="tile"><div class="k">${MONTHS[m-1]} ${y}</div><div class="v">${H(by[months[11]].block)}</div><div class="s">+ ${H(planned)} prévues ce mois</div></div>
   </div>`;
   // chart
@@ -946,7 +946,7 @@ function renderStats(){
   const stepH=maxV>2400?600:maxV>1200?300:maxV>600?120:60;
   const top=Math.ceil(maxV/stepH)*stepH;
   const ys=v=>padT+(Hh-padT-padB)*(1-v/top);
-  let svg=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Heures bloc par mois sur 12 mois, avec la part de nuit">`;
+  let svg=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Heures block par mois sur 12 mois, avec la part de nuit">`;
   for(let g=0; g<=top; g+=stepH){ const yy=ys(g); svg+=`<line class="gl" x1="${padL}" x2="${W}" y1="${yy}" y2="${yy}"/><text x="${padL-6}" y="${yy+3}" text-anchor="end">${Math.round(g/60)}h</text>`; }
   months.forEach((k,i)=>{
     const d=by[k], x=padL+i*cw+cw*.18, bw=cw*.64;
@@ -959,14 +959,14 @@ function renderStats(){
     svg+=`<rect class="hit" data-i="${i}" x="${padL+i*cw}" y="${padT-10}" width="${cw}" height="${Hh-padT-padB+10}" rx="6"/>`;
   });
   svg+=`</svg>`;
-  h+=`<div class="box"><h3>Heures bloc par mois</h3><div class="legend"><span><i style="background:var(--dayc)"></i>Jour</span><span><i style="background:var(--nightc)"></i>Nuit</span></div><div class="chartwrap" id="chart">${svg}<div class="tip" id="tip" hidden></div></div></div>`;
+  h+=`<div class="box"><h3>Heures block par mois</h3><div class="legend"><span><i style="background:var(--dayc)"></i>Jour</span><span><i style="background:var(--nightc)"></i>Nuit</span></div><div class="chartwrap" id="chart">${svg}<div class="tip" id="tip" hidden></div></div></div>`;
   // landings by airfield
   const land={}; for(const f of fl){ if(f.to) land[f.to]=(land[f.to]||0)+1; }
   const apts=Object.entries(land).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
   const mx=apts.length?apts[0][1]:1;
   h+=`<div class="box"><h3>Atterrissages par terrain</h3>`+(apts.length?`<ol class="apt">`+apts.map(([c,n],i)=>`<li><span class="rk">${i+1}</span><span class="nm"><b>${esc(c)}</b>${icao(c)!==c?`<small>${esc(icao(c))}</small>`:""}</span><span class="tr"><i style="width:${Math.max(4,n/mx*100)}%"></i></span><span class="ct">${n}</span></li>`).join("")+`</ol><p>Sur tout l'historique : ${fl.length} atterrissage${fl.length>1?"s":""}, ${apts.length} terrain${apts.length>1?"s":""}. Les mises en place ne comptent pas.</p>`:`<p>Aucun atterrissage pour l'instant. Les terrains s'ajoutent ici une fois tes vols terminés.</p>`)+`</div>`;
   // table
-  h+=`<div class="box"><h3>Détail par mois</h3><div class="tbl"><table><thead><tr><th>Mois</th><th>Vols</th><th>Bloc</th><th>Nuit</th></tr></thead><tbody>`+
+  h+=`<div class="box"><h3>Détail par mois</h3><div class="tbl"><table><thead><tr><th>Mois</th><th>Vols</th><th>Block</th><th>Nuit</th></tr></thead><tbody>`+
     months.slice().reverse().map(k=>{ const d=by[k]; return `<tr class="${k===months[11]?"cur":""}"><td>${MONTHS[+k.slice(5)-1]} ${k.slice(0,4)}</td><td>${d.n}</td><td>${H(d.block)}</td><td>${H(d.night)}${d.unknown?"*":""}</td></tr>`; }).join("")+
     `</tbody><tfoot><tr><td>12 mois</td><td>${roll.n}</td><td>${H(roll.block)}</td><td>${H(roll.night)}</td></tr></tfoot></table></div>
     <p>Nuit estimée : temps passé entre la fin et le début du crépuscule civil (soleil à plus de 6° sous l'horizon), calculé le long de la route.${months.some(k=>by[k].unknown)?" * Un aéroport inconnu de l'app : sa nuit n'est pas comptée.":""}</p>
@@ -976,7 +976,7 @@ function renderStats(){
   const tip=v.querySelector("#tip"), wrap=v.querySelector("#chart");
   const show=el=>{ v.querySelectorAll(".hit.on").forEach(x=>x.classList.remove("on")); el.classList.add("on");
     const i=+el.dataset.i, k=months[i], d=by[k];
-    tip.innerHTML=`${MONTHS[+k.slice(5)-1]} ${k.slice(0,4)}<br>${d.n} vol${d.n>1?"s":""} · bloc ${H(d.block)}<br>nuit ${H(d.night)}`;
+    tip.innerHTML=`${MONTHS[+k.slice(5)-1]} ${k.slice(0,4)}<br>${d.n} vol${d.n>1?"s":""} · block ${H(d.block)}<br>nuit ${H(d.night)}`;
     const r=el.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
     let cx=r.left-wr.left+r.width/2; cx=Math.max(70,Math.min(wr.width-70,cx));
     tip.style.left=cx+"px"; tip.style.top=(r.top-wr.top+4)+"px"; tip.hidden=false; };
