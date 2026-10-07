@@ -201,7 +201,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .fc-line i{position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;border:1.5px solid var(--muted);background:var(--surface)}
 .fc-line i:first-child{left:0}.fc-line i:last-of-type{right:0}
 .fc-line svg{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;color:var(--cat);background:var(--surface);transform:rotate(90deg)}
-.fc-times{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fc-times{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fc-t{padding:7px 7px 8px;min-width:0;background:var(--surface-2)}
 .fc-t+.fc-t{border-left:1px solid var(--line)}
 .fc-t.key{background:color-mix(in srgb,var(--cat) 9%,var(--surface-2))}
@@ -685,7 +685,7 @@ function flightCard(ev){
   const tDep=legTime(ev.info.Departure,ref), tArr=legTime(ev.info.Arrival,ref);
   const pos=dutyPos(ev);
   const cell=(label,v,ap,key,fallback,show=true)=>{
-    if(!show) return `<div class="fc-t"><div class="l">${label}</div><div class="na">—</div></div>`;
+    if(!show) return "";
     const t=legTime(v,ref)||fallback||null;
     if(!t) return `<div class="fc-t${key?" key":""}"><div class="l">${label}</div><div class="na">n/a</div></div>`;
     const big=t.loc||t.utc, lab=t.loc?ap:"Z";
