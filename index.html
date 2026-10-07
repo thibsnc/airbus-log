@@ -956,7 +956,7 @@ async function copyText(text, fallbackId){
 }
 /* ---------- LogTen quick entry ---------- */
 // Fleet as given by the owner: type -> registrations.
-const FLEET={ "A20N":["F-ONEA","F-OTIB"], "A30N":["F-ONEO","F-ONET"] };
+const FLEET={ "A20N":["F-ONEA","F-OTIB"], "A339":["F-ONEO","F-ONET"] };
 function fleetType(reg){ for(const [t,rs] of Object.entries(FLEET)) if(rs.includes(reg)) return t; return ""; }
 function ltAircraft(e){ const d=ltData[e.id]||{}; const reg=d.reg||fmtReg(e.reg); const type=d.type||fleetType(reg)||(lbState.types[reg]||"").toUpperCase(); return { reg, type }; }
 const LT_FIELDS=[["out","Block out"],["off","Takeoff"],["on","Landing"],["in","Block in"]];
