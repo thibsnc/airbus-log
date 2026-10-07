@@ -45,7 +45,10 @@ await mkdir(OUT, { recursive: true });
 for (const f of FILES) await cp(f, `${OUT}/${f}`);
 await cp("icons", `${OUT}/icons`, { recursive: true });
 
-const { ICS_URL, APP_KEY } = process.env;
+// Trim: values pasted on a phone often carry a trailing newline or space.
+const ICS_URL = (process.env.ICS_URL || "").trim();
+const APP_KEY = (process.env.APP_KEY || "").trim();
+console.log(`APP_KEY length: ${APP_KEY.length}, raw length: ${(process.env.APP_KEY || "").length}`);
 if (!ICS_URL || !APP_KEY) {
   console.log("ICS_URL or APP_KEY secret missing: publishing the app without data.json");
 } else {
