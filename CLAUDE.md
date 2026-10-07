@@ -9,6 +9,9 @@
 - Shared version: https://aci-log.netlify.app serves the same files plus `netlify/functions` (roster and
   METAR/TAF relay, same origin). Colleagues paste their own Aircalin iCal link; it stays on their device.
   The owner's key mode (encrypted `data.json` on GitHub Pages) still works.
+- Netlify free plan: 300 credits/month, 15 per production deploy; when they run out the shared site is paused
+  (never billed). `netlify.toml` skips every build unless the commit message contains `[netlify]`.
+  Only add `[netlify]` when the owner asks to update the shared version (colleagues), not on routine changes.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
   `out_dir` in the scratchpad), save its `ics` field to a scratch .ics file, run `python3 scripts/verify.py <file.ics>`.
   It must end with "OK" (no JavaScript error); read the per-flight times and the integrity report, fix anything wrong.

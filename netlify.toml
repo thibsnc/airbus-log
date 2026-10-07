@@ -1,6 +1,9 @@
 [build]
   publish = "."
   command = "echo static"
+  # Each production deploy costs 15 of the 300 free monthly credits.
+  # Only build when the commit message contains [netlify]; every other push is skipped.
+  ignore = "git log -1 --pretty=%B | grep -q '\\[netlify\\]' && exit 1 || exit 0"
 
 [functions]
   directory = "netlify/functions"
