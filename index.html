@@ -545,9 +545,10 @@ function parseDescription(desc){
     const sec=/^\*{3}\s*(.+?)\s*\*{3}$/.exec(line.trim());
     if(sec){ role=sec[1]; continue; }
     if(role){
-      const parts=line.split("\t").map(s=>s.trim()).filter(Boolean); if(!parts.length) continue;
-      const code=parts[0]; let name=parts[1]||"", flag=parts[2]||"";
-      const m=/^(.*?)\s*\((\w+)\)$/.exec(name); if(m && !flag){ name=m[1]; flag=m[2]; }
+      // "CODE<tab>Name (I)": the tab is sometimes lost where the iCal feed folds long lines.
+      const cm=/^([A-Z]{3})\s*(.*)$/.exec(line.trim()); if(!cm) continue;
+      const code=cm[1]; let name=cm[2].replace(/\t+/g," ").trim(), flag="";
+      const m=/^(.*?)\s*\((\w+)\)$/.exec(name); if(m){ name=m[1]; flag=m[2]; }
       flag=flag.replace(/[()]/g,"");
       const key=role+"|"+code; if(seen.has(key)) continue; seen.add(key);
       let g=crew.find(x=>x.role===role); if(!g){ g={role,people:[]}; crew.push(g); }
@@ -680,6 +681,16 @@ function dutyPos(ev){
   const hasNext=legs.some(e=>e.dep>=ev.arr && e.dep-ev.arr<gap);
   return { first:!hasPrev, last:!hasNext };
 }
+// Cockpit / cabin head count from the crew list (the roster's PEQ field leaves cabin crew out).
+function crewCount(ev){
+  const cockpit=new Set(), cabin=new Set();
+  for(const g of ev.crew){
+    const r=g.role.toUpperCase();
+    const set=/^(CPT|CDB|CMD|F\/O|OPL|OBT|OPR|SIC|PNT)/.test(r)?cockpit:/^(F\/P|CC|CCP|HST|STW|PNC|C\/C|INC)/.test(r)?cabin:null;
+    if(set) g.people.forEach(p=>set.add(p.code));
+  }
+  return cockpit.size||cabin.size ? `${cockpit.size}/${cabin.size}` : (ev.info.PEQ||"");
+}
 function flightCard(ev){
   const ref=ev.dep||ev.start, now=Date.now();
   const tDep=legTime(ev.info.Departure,ref), tArr=legTime(ev.info.Arrival,ref);
@@ -703,7 +714,7 @@ function flightCard(ev){
       <div class="fc-ap to"><b>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
     </div>
     <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from,0,shifted(tDep,-90),pos.first)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}${cell("Check-out",ev.info.Checkout,ev.to,0,shifted(tArr,30),pos.last)}</div>
-    <div class="fc-foot">${ev.info.PEQ?`<span>${IC_CREW}<b>${esc(ev.info.PEQ)}</b> crew</span>`:""}${ev.info.TFT&&ev.info.TFT!=="00:00"?`<span>${IC_CLOCK}TFT <b>${esc(ev.info.TFT)}</b></span>`:""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
+    <div class="fc-foot">${crewCount(ev)?`<span>${IC_CREW}<b>${crewCount(ev)}</b> crew</span>`:""}${ev.info.TFT&&ev.info.TFT!=="00:00"?`<span>${IC_CLOCK}Flight time <b>${esc(ev.info.TFT)}</b></span>`:""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
     <details class="fc-crew"><summary><span>${crewLine.length?esc(crewLine.join(" · ")):"Équipage et détails"}</span></summary><div class="body">${detailBody(ev)}</div></details>
   </article>`;
 }
