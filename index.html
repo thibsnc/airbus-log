@@ -405,6 +405,7 @@ img{max-width:100%}
 .keyscreen form{display:grid;gap:10px}
 .keyscreen input{font:inherit;font-family:var(--f-mono);font-size:16px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);min-width:0}
 .keyscreen .err{color:var(--accent);font-weight:600}
+.keyscreen .keybtns{display:grid;grid-template-columns:1fr 2fr;gap:8px}
 </style>
 </head>
 
@@ -461,7 +462,7 @@ img{max-width:100%}
       <label class="btn ghost file">Importer un .ics<input type="file" id="ics-file" accept=".ics,text/calendar"></label>
     </div>
     <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
-    <button class="btn ghost" id="s-key">Changer de clé</button>
+    <button class="btn ghost" id="s-key">Changer de roster</button>
     <button class="btn ghost" id="s-close">Fermer</button>
   </div>
 </div>
@@ -478,10 +479,10 @@ img{max-width:100%}
 <div class="keyscreen" id="keyscreen" hidden>
   <div class="in">
     <h2>ACI LOG</h2>
-    <p>Entre ta clé personnelle pour charger ton roster. Elle reste enregistrée sur cet appareil.</p>
+    <p>Colle le lien de ton roster, celui que te donne le portail équipage pour l'abonnement calendrier (iCal). Il reste uniquement sur cet appareil.</p>
     <form id="keyform" autocomplete="off">
-      <input id="keyin" name="key" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Clé personnelle" aria-label="Clé personnelle">
-      <button class="btn" type="submit" id="keygo">Valider</button>
+      <input id="keyin" name="key" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://alexis.aircalin.nc/crew-web/ics?…" aria-label="Lien de ton roster">
+      <div class="keybtns"><button class="btn ghost" type="button" id="keypaste">Coller</button><button class="btn" type="submit" id="keygo">Valider</button></div>
     </form>
     <p class="err" id="keymsg"></p>
   </div>
@@ -490,7 +491,7 @@ img{max-width:100%}
 <script>
 (() => {
 "use strict";
-const ME = "SLA";
+let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 let claudeMcp=null, claudeTrigger=null;
@@ -508,6 +509,7 @@ const store = {
   get(k){ try { return JSON.parse(localStorage.getItem("abl:"+k)); } catch(e){ return null; } },
   set(k,v){ try { localStorage.setItem("abl:"+k, JSON.stringify(v)); } catch(e){} }
 };
+ME = store.get("me") || ME;
 const state = {
   view: store.get("view")==="cal" ? "cal" : "band",
   tz: store.get("tz") || "NOU",
@@ -1185,6 +1187,35 @@ document.getElementById("tz-nou").onclick=()=>{ state.tz="NOU"; store.set("tz","
 document.getElementById("tz-utc").onclick=()=>{ state.tz="UTC"; store.set("tz","UTC"); render(); tick(); };
 
 let apiKey=store.get("key")||"";
+let rosterUrl=store.get("rosterUrl")||"";
+// The relay lives on Netlify; on the Netlify site itself it is same-origin.
+const RELAY = /netlify\.app$/.test(location.hostname) ? "" : "https://aci-log.netlify.app";
+function rosterLinkInfo(text){
+  let u; try{ u=new URL(text.trim()); }catch(e){ return null; }
+  if(u.protocol!=="https:" || u.hostname!=="alexis.aircalin.nc" || !u.pathname.startsWith("/crew-web/ics")) return null;
+  return { url:u.toString(), trig:(u.searchParams.get("trig")||"").toUpperCase() };
+}
+async function fetchLink(url){
+  let r;
+  try{ r=await fetch(RELAY+"/api/roster",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url}),cache:"no-store"}); }
+  catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
+  if(r.status===400){ const err=new Error("bad link"); err.code="badlink"; throw err; }
+  if(!r.ok){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
+  const t=await r.text();
+  load(t,new Date().toISOString(),!state.events.length); syncArchive();
+}
+function wxIdsLocal(){
+  const st=wxStations(); const now=Date.now();
+  const soon=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.arr>now&&e.dep<now+36*36e5).flatMap(e=>[icao(e.from),icao(e.to)]);
+  return [...new Set(["NWWW",...Object.keys(WX_FAV),...st.list,...soon].filter(c=>/^[A-Z]{4}$/.test(c)))].sort().slice(0,20);
+}
+async function fetchWxLink(){
+  const d=await (await fetch(RELAY+"/api/wx?ids="+wxIdsLocal().join(","),{cache:"no-store"})).json();
+  if(d.error) throw new Error(d.error);
+  wx.metars=parseMetars(d.metar); wx.tafs=parseTafs(d.taf); wx.fetchedAt=d.fetchedAt||new Date().toISOString();
+  store.set("wx",{metars:wx.metars,tafs:wx.tafs,fetchedAt:wx.fetchedAt});
+  renderWx(); if(!document.getElementById("wxsheet").hidden) renderWxSheet();
+}
 const b64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
 const keyCache=new Map();
 async function decryptData(env,pass){
@@ -1221,12 +1252,16 @@ async function refreshAll(manual){
     } else toast("Le roster est relu automatiquement toutes les heures.");
     return;
   }
-  if(!apiKey){ showKey(); return; }
+  if(!apiKey && !rosterUrl){ showKey(); return; }
   if(busy) return; busy=true; lastRefresh=Date.now();
   const btns=[document.getElementById("b-refresh"),document.getElementById("s-refresh")];
   btns.forEach(b=>b.disabled=true);
   let ok=true;
-  try{ await fetchData(); }
+  if(rosterUrl){
+    try{ await fetchLink(rosterUrl); }
+    catch(e){ ok=false; if(e.code==="badlink") showKey("Ce lien de roster n'est plus accepté. Colle-le de nouveau."); else if(manual) toast(navigator.onLine===false?"Pas de connexion : dernière version affichée.":"Roster injoignable pour l'instant : dernière version gardée."); }
+    try{ await fetchWxLink(); }catch(e){ if(ok && manual) toast("Météo injoignable pour l'instant."); ok=false; }
+  } else try{ await fetchData(); }
   catch(e){ ok=false;
     if(e.code===401) showKey("Ta clé ne correspond plus aux données. Entre-la de nouveau.");
     else if(manual) toast(e.code===404?"Données pas encore publiées. Réessaie dans quelques minutes.":navigator.onLine===false?"Pas de connexion : dernière version affichée.":"Mise à jour impossible pour l'instant : dernière version gardée."); }
@@ -1249,14 +1284,29 @@ function showKey(msg){
 }
 document.getElementById("keyform").addEventListener("submit",async e=>{
   e.preventDefault();
-  const k=document.getElementById("keyin").value.trim();
-  if(/^https?:/i.test(k)){ document.getElementById("keymsg").textContent="Ça, c'est le lien du roster. Entre ta clé personnelle (24 lettres et chiffres)."; return; } const msg=document.getElementById("keymsg"); const go=document.getElementById("keygo");
-  if(!k){ msg.textContent="Entre ta clé."; return; }
-  go.disabled=true; msg.textContent="Vérification…";
-  try{ await fetchData(k); apiKey=k; store.set("key",k); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); }
-  catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : err.code===404 ? "Les données ne sont pas encore publiées. Réessaie dans quelques minutes." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
+  const k=document.getElementById("keyin").value.trim(); const msg=document.getElementById("keymsg"); const go=document.getElementById("keygo");
+  if(!k){ msg.textContent="Colle le lien de ton roster."; return; }
+  go.disabled=true; msg.textContent="Chargement du roster…";
+  if(/^https?:/i.test(k)){
+    const info=rosterLinkInfo(k);
+    if(!info){ msg.textContent="Ce n'est pas un lien de roster Aircalin. Il doit commencer par https://alexis.aircalin.nc/crew-web/ics"; go.disabled=false; return; }
+    try{
+      state.events=[]; await fetchLink(info.url);
+      rosterUrl=info.url; store.set("rosterUrl",rosterUrl); apiKey=""; store.set("key","");
+      if(info.trig){ ME=info.trig; store.set("me",ME); }
+      document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); render();
+      fetchWxLink().catch(()=>{});
+    }catch(err){ msg.textContent= err.code==="badlink" ? "Ce lien n'est pas accepté. Copie-le de nouveau depuis le portail équipage." : err.code===502 ? "Le portail Aircalin ne répond pas. Vérifie ton lien ou réessaie dans un moment." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
+  } else {
+    try{ await fetchData(k); apiKey=k; store.set("key",k); rosterUrl=""; store.set("rosterUrl",""); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); }
+    catch(err){ msg.textContent= err.code===401 ? "Clé incorrecte. Vérifie-la et réessaie." : err.code===404 ? "Colle plutôt le lien de ton roster." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
+  }
   go.disabled=false;
 });
+document.getElementById("keypaste").onclick=async()=>{
+  try{ const t=await navigator.clipboard.readText(); if(t){ document.getElementById("keyin").value=t.trim(); document.getElementById("keymsg").textContent=""; } }
+  catch(e){ document.getElementById("keyin").focus(); document.getElementById("keymsg").textContent="Appuie longuement dans le champ, puis Paste."; }
+};
 document.getElementById("s-key").onclick=()=>{ closeSheet(); showKey(); };
 
 /* ---------- METAR ---------- */
@@ -1420,7 +1470,7 @@ if(IN_CLAUDE){
     },()=>{});
   })();
 } else {
-  if(apiKey) refreshAll(false); else showKey();
+  if(apiKey || rosterUrl) refreshAll(false); else showKey();
   setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); },10*60*1000);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && Date.now()-lastRefresh>3*60*1000) refreshAll(false); });
   if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
