@@ -179,6 +179,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-g input:focus{outline:2px solid var(--sky);outline-offset:0}
 .ltc-g input::placeholder{color:color-mix(in srgb,var(--muted) 50%,transparent);font-weight:500}
 .ltc-g input.bad{border-color:var(--accent)}
+.ltc-g input:focus{caret-color:var(--sky)}
 .ltc-sum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .ltc-sum b{font-family:var(--f-mono);color:var(--fg)}
 .ltc-opts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
@@ -568,7 +569,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.1", date:"2026-10-08" };
+const APP_VERSION = { n:"1.2", date:"2026-10-08" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1016,6 +1017,23 @@ function fleetType(reg){ for(const [t,rs] of Object.entries(FLEET)) if(rs.includ
 function ltAircraft(e){ const d=ltData[e.id]||{}; const reg=d.reg||fmtReg(e.reg); const type=d.type||fleetType(reg)||(lbState.types[reg]||"").toUpperCase(); return { reg, type }; }
 const LT_FIELDS=[["out","Block out"],["off","Takeoff"],["on","Landing"],["in","Block in"]];
 let ltData=store.get("ltForm")||{};
+// Older entries could hold 3 digits ("125" = 01:25): store every time as HHMM.
+for(const v of Object.values(ltData)) for(const k of ["out","off","on","in"]) if(v&&typeof v[k]==="string"&&/^\d{3}$/.test(v[k])) v[k]="0"+v[k];
+// Time entry mask: digits fill HH then MM. A first digit 3-9 is a one-digit hour (7 -> 7:--);
+// 0-2 waits for a second hour digit (1 -> 1-:--, 13 -> 13:--; 2 then 5 -> 02:5-).
+function tmAdd(c,x){
+  if(c.length===0) return x>="3" ? {c:"0"+x,pad:true} : {c:x,pad:false};
+  if(c.length===1){ if(+(c+x)<=23) return {c:c+x,pad:false}; return x<="5" ? {c:"0"+c+x,pad:true} : null; }
+  if(c.length===2) return x<="5" ? {c:c+x} : null;
+  if(c.length===3) return {c:c+x};
+  return null;
+}
+function tmShow(c,pad){
+  if(!c) return "";
+  if(c.length===4) return c.slice(0,2)+":"+c.slice(2);
+  const H=c.length>=2 ? (pad?String(+c.slice(0,2)):c.slice(0,2)) : c+"-";
+  return c.length<=2 ? H+":--" : H+":"+c[2]+"-";
+}
 function ltSave(){ store.set("ltForm",ltData); }
 // Practice flight so the form can be tried without a real flight (clearly marked TEST in LogTen).
 function ltTestFlight(){
@@ -1025,7 +1043,7 @@ function ltTestFlight(){
     start:dep, end:arr, dep, arr, info:{}, crew:[{role:"CPT",people:[{code:"TST",name:"Test Commandant",flag:""}]}], notes:[], summary:"", desc:"" };
 }
 function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).concat([ltTestFlight()]).sort((a,b)=>b.dep-a.dep); }
-function parseHHMM(v){ const d=(v||"").replace(/\D/g,""); if(d.length<3) return null; const h=+d.slice(0,-2), m=+d.slice(-2); if(h>23||m>59) return null; return h*60+m; }
+function parseHHMM(v){ const d=(v||"").replace(/\D/g,""); if(d.length!==4) return null; const h=+d.slice(0,-2), m=+d.slice(-2); if(h>23||m>59) return null; return h*60+m; }
 function fmtHHMM(v){ const d=(v||"").replace(/\D/g,"").slice(0,4); return d.length>=3 ? d.slice(0,-2).padStart(2,"0")+":"+d.slice(-2) : d; }
 function nearTs(min,ref){ const d=new Date(ref); let best=null; for(const k of [-1,0,1]){ const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()+k,Math.floor(min/60),min%60); if(best===null||Math.abs(t-ref)<Math.abs(best-ref)) best=t; } return best; }
 function ltTimes(e){
@@ -1180,7 +1198,7 @@ function renderLogTen(){
         <select data-a="type" aria-label="Type">${Object.keys(FLEET).map(t=>`<option ${ac.type===t?"selected":""}>${t}</option>`).join("")}</select>
         <select data-a="reg" aria-label="Immatriculation">${(FLEET[ac.type]||[]).map(r=>`<option ${reg===r?"selected":""}>${r}</option>`).join("")}${FLEET[ac.type]&&FLEET[ac.type].includes(reg)?"":`<option selected>${esc(reg||"—")}</option>`}</select>
       </div>
-      <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" class="${ocrState[e.id]&&ocrState[e.id].filled.includes(k)?"ocr":""}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
+      <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" class="${ocrState[e.id]&&ocrState[e.id].filled.includes(k)?"ocr":""} ${d[k]&&d[k].length<4?"bad":""}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(tmShow(d[k]||"",false))}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
       <div class="ltc-opts">
         <label class="chk"><input type="checkbox" data-o="pf" ${d.pf?"checked":""}> Pilot flying</label>
@@ -1198,15 +1216,28 @@ function renderLogTen(){
     const id=card.dataset.id, e=fl.find(x=>x.id===id); if(!e) return;
     const refresh=()=>{ const c=ltCheck(e); card.querySelector(".ltc-sum").innerHTML=ltSummary(e); card.querySelector('[data-act="import"]').disabled=!c.ok; };
     card.querySelectorAll(".ltc-g input").forEach((inp,i,all)=>{
-      inp.addEventListener("input",()=>{
-        const digits=inp.value.replace(/\D/g,"").slice(0,4);
-        ltData[id]=Object.assign({},ltData[id],{[inp.dataset.k]:digits}); ltSave(); inp.classList.remove("ocr");
-        inp.classList.toggle("bad", digits.length===4 && parseHHMM(digits)==null);
+      const k=inp.dataset.k, st={ c:(ltData[id]||{})[k]||"", pad:false, fresh:false };
+      const caret=()=>{ const p=inp.value.indexOf("-"); const n=p<0?inp.value.length:p; try{ inp.setSelectionRange(n,n); }catch(_){} };
+      const apply=(c,pad)=>{
+        const done=c.length===4 && st.c!==c; st.c=c; st.pad=!!pad;
+        inp.value=tmShow(c,st.pad); caret();
+        ltData[id]=Object.assign({},ltData[id],{[k]:c}); ltSave(); inp.classList.remove("ocr","bad");
         refresh();
-        if(digits.length===4 && parseHHMM(digits)!=null){ inp.value=fmtHHMM(digits); if(all[i+1]) all[i+1].focus(); }
+        if(done && all[i+1]) all[i+1].focus();
+      };
+      const typeDigits=str=>{ let c=st.fresh?"":st.c, pad=st.fresh?false:st.pad; st.fresh=false;
+        for(const x of str){ const r=tmAdd(c,x); if(r){ pad = r.pad===undefined ? pad : r.pad; c=r.c; } }
+        apply(c,pad); };
+      inp.addEventListener("beforeinput",ev=>{
+        const t=ev.inputType||"";
+        if(t.startsWith("insert")){ ev.preventDefault(); typeDigits((ev.data||"").replace(/\D/g,"")); }
+        else if(t.startsWith("delete")){ ev.preventDefault(); st.fresh=false;
+          let c=st.c.slice(0,-1), pad=st.pad; if(pad&&c.length===1){ c=""; pad=false; } apply(c,pad); }
       });
-      inp.addEventListener("blur",()=>{ inp.value=fmtHHMM(inp.value); });
-      inp.addEventListener("focus",()=>{ inp.value=inp.value.replace(/\D/g,""); });
+      // Fallback for browsers that ignore beforeinput: rebuild from the digits present.
+      inp.addEventListener("input",()=>{ const d=inp.value.replace(/\D/g,"").slice(0,4); st.c=""; st.pad=false; st.fresh=false; typeDigits(d); });
+      inp.addEventListener("focus",()=>{ st.c=(ltData[id]||{})[k]||""; st.fresh=st.c.length===4; inp.value=tmShow(st.c,st.pad); setTimeout(caret,0); });
+      inp.addEventListener("blur",()=>{ inp.value=tmShow(st.c,st.pad); inp.classList.toggle("bad",st.c.length>0&&st.c.length<4); });
     });
     card.querySelectorAll(".ltc-opts [data-o]").forEach(el=>{
       const save=()=>{ const v=el.type==="checkbox"?el.checked:el.value.trim().toUpperCase(); ltData[id]=Object.assign({},ltData[id],{[el.dataset.o]:v});
