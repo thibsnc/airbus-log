@@ -201,7 +201,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .fc-line i{position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;border:1.5px solid var(--muted);background:var(--surface)}
 .fc-line i:first-child{left:0}.fc-line i:last-of-type{right:0}
 .fc-line svg{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;color:var(--cat);background:var(--surface);transform:rotate(90deg)}
-.fc-times{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fc-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fc-t{padding:7px 7px 8px;min-width:0;background:var(--surface-2)}
 .fc-t+.fc-t{border-left:1px solid var(--line)}
 .fc-t.key{background:color-mix(in srgb,var(--cat) 9%,var(--surface-2))}
@@ -685,7 +685,7 @@ function flightCard(ev){
       <div class="fc-mid"><span class="fc-dur">${dur}</span><span class="fc-line"><i></i>${IC_PLANE}<i></i></span></div>
       <div class="fc-ap to"><b>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
     </div>
-    <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}${cell("Check-out",ev.info.Checkout,ev.to)}</div>
+    <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}</div>
     <div class="fc-foot">${ev.info.PEQ?`<span>${IC_CREW}<b>${esc(ev.info.PEQ)}</b> crew</span>`:""}${ev.info.TFT&&ev.info.TFT!=="00:00"?`<span>${IC_CLOCK}TFT <b>${esc(ev.info.TFT)}</b></span>`:""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
     <details class="fc-crew"><summary><span>${crewLine.length?esc(crewLine.join(" · ")):"Équipage et détails"}</span></summary><div class="body">${detailBody(ev)}</div></details>
   </article>`;
