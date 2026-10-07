@@ -663,7 +663,7 @@ function detailBody(ev){
     if(ev.reg) b+=`<div><dt>Avion</dt><dd>${esc(fmtReg(ev.reg))}</dd></div>`;
     if(ev.role) b+=`<div><dt>Fonction</dt><dd>${esc(ev.role)}</dd></div>`;
     b+=timeCell("Check-in",ev.info.Checkin)+timeCell("Départ",ev.info.Departure)+timeCell("Arrivée",ev.info.Arrival)+timeCell("Check-out",ev.info.Checkout);
-    if(ev.info.TFT && ev.info.TFT!=="00:00") b+=`<div><dt>Temps de vol (TFT)</dt><dd>${esc(ev.info.TFT)}</dd></div>`;
+    if(ev.cat==="vol"){ const bl=blockOf(ev); b+=`<div><dt>Temps de vol</dt><dd>${dur2(bl.min*6e4)}<small>${bl.real?"block réel (heures saisies)":"départ → arrivée prévus"}</small></dd></div>`; }
     if(ev.info.PEQ) b+=`<div><dt>PEQ</dt><dd>${esc(ev.info.PEQ)}</dd></div>`;
     for(const [k,v] of Object.entries(ev.info)) if(!["Checkin","Departure","Arrival","Checkout","TFT","PEQ"].includes(k)) b+=`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`;
     b+=`</dl>`;
@@ -725,11 +725,11 @@ function crewCount(ev){
 }
 function flightCard(ev){
   const ref=ev.dep||ev.start, now=Date.now();
-  const tDep=legTime(ev.info.Departure,ref), tArr=legTime(ev.info.Arrival,ref);
+  const tDep=legTime(ev.info.Departure,ref), tArr=legTime(ev.info.Arrival,ev.arr||ref);
   const pos=dutyPos(ev);
   const cell=(label,v,ap,key,fallback,show=true)=>{
     if(!show) return "";
-    const t=legTime(v,ref)||fallback||null;
+    const t=legTime(v,(label==="Arrival"||label==="Check-out")?(ev.arr||ref):ref)||fallback||null;
     if(!t) return `<div class="fc-t${key?" key":""}"><div class="l">${label}</div><div class="na">n/a</div></div>`;
     const big=t.loc||t.utc, lab=t.loc?ap:"Z";
     return `<div class="fc-t${key?" key":""}"><div class="l">${label}</div><div class="v">${big}<em>${esc(lab)}</em></div>${t.loc?`<div class="z">${t.utc}z [${pad(t.day)}]</div>`:`<div class="z">[${pad(t.day)}]</div>`}</div>`;
@@ -746,10 +746,15 @@ function flightCard(ev){
       <div class="fc-ap to"><b>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
     </div>
     <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from,0,shifted(tDep,-90),pos.first)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}${cell("Check-out",ev.info.Checkout,ev.to,0,shifted(tArr,30),pos.last)}</div>
-    <div class="fc-foot">${crewCount(ev)?`<span>${IC_CREW}<b>${crewCount(ev)}</b> crew</span>`:""}${ev.info.TFT&&ev.info.TFT!=="00:00"?`<span>${IC_CLOCK}Flight time <b>${esc(ev.info.TFT)}</b></span>`:""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
+    <div class="fc-foot">${crewCount(ev)?`<span>${IC_CREW}<b>${crewCount(ev)}</b> crew</span>`:""}${ev.cat==="vol"?(()=>{ const b=blockOf(ev); return `<span>${IC_CLOCK}Flight time <b>${dur2(b.min*6e4)}</b>${b.real?" réel":""}</span>`; })():""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
     <details class="fc-crew"><summary><span>${crewLine.length?esc(crewLine.join(" · ")):"Équipage et détails"}</span></summary><div class="body">${detailBody(ev)}</div></details>
   </article>`;
 }
+// Flight time: real block (times entered or read from the recap photo) when known, else scheduled departure → arrival.
+// The roster's TFT field is not used: on the first leg of a day it counts from check-in.
+function realTimes(e){ try{ const c=ltCheck(e); if(c.ok) return c.t; }catch(_){} return null; }
+function blockOf(e){ const r=realTimes(e); const dep=r?r.out:e.dep, arr=r?r.in:e.arr;
+  return { dep, arr, min:Math.max(0,Math.round((arr-dep)/6e4)), real:!!r }; }
 function dur2(ms){ const m=Math.round(ms/60000); return Math.floor(m/60)+"h"+pad(m%60); }
 function row(ev, k){
   if(ev.cat==="vol"||ev.cat==="mep") return flightCard(ev);
@@ -826,8 +831,8 @@ function summaryHTML(){
   const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
   const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol");
-  const tft=Math.round(fl.reduce((n,e)=>n+Math.max(0,(e.arr||e.end)-(e.dep||e.start)),0)/60000);
-  const nowT=Date.now(); const nightMin=fl.filter(e=>(e.arr||e.end)<=nowT).reduce((n,e)=>n+(nightMinutes(e.from,e.to,e.dep||e.start,e.arr||e.end)||0),0);
+  const tft=fl.reduce((n,e)=>n+blockOf(e).min,0);
+  const nowT=Date.now(); const nightMin=fl.filter(e=>e.arr<=nowT).reduce((n,e)=>{ const b=blockOf(e); return n+(nightMinutes(e.from,e.to,b.dep,b.arr)||0); },0);
   h+=`<div class="stats"><div class="stat"><div class="k">Vols ${MONTHS[m-1].slice(0,4)}.</div><div class="v">${fl.length}</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat"><div class="k">Nuit</div><div class="v">${Math.floor(nightMin/60)}h${pad(nightMin%60)}</div></div></div>`;
   return h;
 }
@@ -920,7 +925,7 @@ function lbFlights(){
   return state.events.filter(e=>(e.cat==="vol"||(lbState.mep&&e.cat==="mep")) && e.dep>=from && e.arr<=to);
 }
 function lbRow(e){
-  const block=Math.max(0,Math.round((e.arr-e.dep)/60000)); const isMep=e.cat==="mep"; const min=isMep?0:block; const cap=isMep?"":capacity(e.role);
+  const block=e.cat==="vol"?blockOf(e).min:Math.max(0,Math.round((e.arr-e.dep)/60000)); const isMep=e.cat==="mep"; const min=isMep?0:block; const cap=isMep?"":capacity(e.role);
   return { e, min, block, cap, date:e.dep, reg:regFmt(e.reg), type:(fleetType(regFmt(e.reg))||lbState.types[regFmt(e.reg)]||"").toUpperCase(),
     pic: cap==="PIC"?"SELF":crewName(e,/^CPT/), sic: cap==="SIC"?"SELF":crewName(e,/^F\/O/) };
 }
@@ -1287,20 +1292,22 @@ function nightMinutes(from,to,dep,arr){
   return night;
 }
 const fkey=(flight,dep,from)=>(flight+"-"+ymd(dep).replace(/-/g,"")+"-"+from).replace(/[^A-Za-z0-9_\-]/g,"");
-function flightRecord(e){ const block=Math.max(0,Math.round((e.arr-e.dep)/60000)); return { flight:e.flight, from:e.from, to:e.to, dep:e.dep, arr:e.arr, reg:fmtReg(e.reg), role:e.role||"", block, night:nightMinutes(e.from,e.to,e.dep,e.arr) }; }
+function flightRecord(e){ const b=blockOf(e); return { flight:e.flight, from:e.from, to:e.to, dep:e.dep, arr:e.arr, reg:fmtReg(e.reg), role:e.role||"", block:b.min, night:nightMinutes(e.from,e.to,b.dep,b.arr), real:b.real }; }
 let archive=new Map(Object.entries(store.get("flights")||{}));
 function allFlights(){
   const m=new Map(archive);
   const now=Date.now();
-  for(const e of state.events) if(e.cat==="vol" && e.arr<=now){ const k=fkey(e.flight,e.dep,e.from); if(!m.has(k)) m.set(k,flightRecord(e)); }
+  for(const e of state.events) if(e.cat==="vol" && e.arr<=now){ const k=fkey(e.flight,e.dep,e.from); const r=m.get(k); if(!r||realTimes(e)) m.set(k,flightRecord(e)); }
   return [...m.values()].sort((a,b)=>a.dep-b.dep);
 }
 function syncArchive(){
   const now=Date.now(); let changed=false;
   for(const e of state.events){
     if(e.cat!=="vol"||e.arr>now) continue;
-    const k=fkey(e.flight,e.dep,e.from); if(archive.has(k)) continue;
-    archive.set(k,flightRecord(e)); changed=true;
+    const k=fkey(e.flight,e.dep,e.from), old=archive.get(k), rec=flightRecord(e);
+    if(old && old.block===rec.block && old.night===rec.night) continue;
+    if(old && old.real && !rec.real) continue;
+    archive.set(k,rec); changed=true;
   }
   if(changed) store.set("flights",Object.fromEntries(archive));
 }
