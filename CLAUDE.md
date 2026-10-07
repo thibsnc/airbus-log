@@ -9,5 +9,10 @@
 - Shared version: https://aci-log.netlify.app serves the same files plus `netlify/functions` (roster and
   METAR/TAF relay, same origin). Colleagues paste their own Aircalin iCal link; it stays on their device.
   The owner's key mode (encrypted `data.json` on GitHub Pages) still works.
+- Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
+  `out_dir` in the scratchpad), save its `ics` field to a scratch .ics file, run `python3 scripts/verify.py <file.ics>`.
+  It must end with "OK" (no JavaScript error); read the per-flight times and the integrity report, fix anything wrong.
+  Never put the roster file in the repo.
+- The app itself re-runs `checkRoster()` on every roster update and shows the result under the summary tiles.
 - Never commit the roster link or the access key: they live only in GitHub Actions secrets.
 - The owner writes in French and uses an iPhone set to English: give iOS labels in English.

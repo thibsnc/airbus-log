@@ -192,6 +192,15 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-type input{font:inherit;font-weight:700;width:90px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);text-transform:uppercase}
 .ltc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ltc-ok{font-size:12px;font-weight:700;color:var(--green)}
+.integ{display:block;width:100%;margin-top:6px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font:inherit;font-size:12.5px;font-weight:700;text-align:left;cursor:pointer;background:var(--surface)}
+.integ.ok{color:var(--green)}
+.integ.bad{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.iss{display:grid;gap:2px;padding:9px 11px;border-radius:10px;background:var(--surface-2);border-left:3px solid var(--muted);font-size:13.5px}
+.iss b{font-size:12px;letter-spacing:.02em}
+.iss.err{border-left-color:var(--accent)}
+.iss.warn{border-left-color:#e0a100}
+.iss.info{opacity:.75}
+.fc-warn{font-size:12px;font-weight:700;color:var(--accent);padding:2px 0}
 .ltc-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ltc-photo .btn{padding:8px 13px;font-size:13.5px}
 .ltc-ocr{font-size:12.5px;font-weight:600;color:var(--muted)}
@@ -505,6 +514,16 @@ img{max-width:100%}
     <button class="btn ghost" id="wx-close">Fermer</button>
   </div>
 </div>
+<div class="sheet" id="integsheet" hidden role="dialog" aria-label="Vérification du roster">
+  <div class="in">
+    <div class="grab"></div>
+    <h3>Vérification du roster</h3>
+    <p class="note">Faite automatiquement à chaque mise à jour : durées selon la distance, fuseaux horaires, enchaînement des vols, check-in et check-out, repos, équipage, avion, vols en double.</p>
+    <div id="integ-list" style="display:grid;gap:8px"></div>
+    <p class="note" id="integ-at"></p>
+    <button class="btn ghost" id="integ-close">Fermer</button>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 <div class="keyscreen" id="keyscreen" hidden>
   <div class="in">
@@ -746,6 +765,7 @@ function flightCard(ev){
       <div class="fc-ap to"><b>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
     </div>
     <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from,0,shifted(tDep,-90),pos.first)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}${cell("Check-out",ev.info.Checkout,ev.to,0,shifted(tArr,30),pos.last)}</div>
+    ${issuesFor(ev.id).map(i=>`<div class="fc-warn ${i.lvl}">⚠︎ ${esc(i.msg)}</div>`).join("")}
     <div class="fc-foot">${crewCount(ev)?`<span>${IC_CREW}<b>${crewCount(ev)}</b> crew</span>`:""}${ev.cat==="vol"?(()=>{ const b=blockOf(ev); return `<span>${IC_CLOCK}Flight time <b>${dur2(b.min*6e4)}</b>${b.real?" réel":""}</span>`; })():""}<span class="fc-st ${st[0]}">${st[1]}</span></div>
     <details class="fc-crew"><summary><span>${crewLine.length?esc(crewLine.join(" · ")):"Équipage et détails"}</span></summary><div class="body">${detailBody(ev)}</div></details>
   </article>`;
@@ -833,7 +853,7 @@ function summaryHTML(){
   const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol");
   const tft=fl.reduce((n,e)=>n+blockOf(e).min,0);
   const nowT=Date.now(); const nightMin=fl.filter(e=>e.arr<=nowT).reduce((n,e)=>{ const b=blockOf(e); return n+(nightMinutes(e.from,e.to,b.dep,b.arr)||0); },0);
-  h+=`<div class="stats"><div class="stat"><div class="k">Vols ${MONTHS[m-1].slice(0,4)}.</div><div class="v">${fl.length}</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat"><div class="k">Nuit</div><div class="v">${Math.floor(nightMin/60)}h${pad(nightMin%60)}</div></div></div>`;
+  h+=`<div class="stats"><div class="stat"><div class="k">Vols ${MONTHS[m-1].slice(0,4)}.</div><div class="v">${fl.length}</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat"><div class="k">Nuit</div><div class="v">${Math.floor(nightMin/60)}h${pad(nightMin%60)}</div></div></div>${integBadge()}`;
   return h;
 }
 
@@ -1291,6 +1311,90 @@ function nightMinutes(from,to,dep,arr){
   }
   return night;
 }
+/* ---------- integrity check, run on every roster update ---------- */
+const TZ_OF={NOU:"Pacific/Noumea",GEA:"Pacific/Noumea",NAN:"Pacific/Fiji",SUV:"Pacific/Fiji",WLS:"Pacific/Wallis",FUT:"Pacific/Wallis",AKL:"Pacific/Auckland",SYD:"Australia/Sydney",BNE:"Australia/Brisbane",MEL:"Australia/Melbourne",PPT:"Pacific/Tahiti",VLI:"Pacific/Efate",NRT:"Asia/Tokyo",HND:"Asia/Tokyo",KIX:"Asia/Tokyo",CDG:"Europe/Paris",BKK:"Asia/Bangkok",SIN:"Asia/Singapore",HKG:"Asia/Hong_Kong",LAX:"America/Los_Angeles"};
+function tzOffsetMin(code,ts){
+  const z=TZ_OF[code]; if(!z) return null;
+  try{ const p=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:z,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date(ts)).map(x=>[x.type,x.value]));
+    return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute)-Math.floor(ts/6e4)*6e4)/6e4); }catch(_){ return null; }
+}
+function distKm(a,b){ const A=COORD[a], B=COORD[b]; if(!A||!B) return null; const u=vec(A), v=vec(B); return 6371*Math.acos(Math.min(1,Math.max(-1,u[0]*v[0]+u[1]*v[1]+u[2]*v[2]))); }
+const fmtOff=m=>(m<0?"−":"+")+pad(Math.floor(Math.abs(m)/60))+":"+pad(Math.abs(m)%60);
+// Returns { issues:[{lvl:"err"|"warn"|"info", id, label, msg}], legs, at }.
+function checkRoster(events, extra={}){
+  const out=[], add=(lvl,e,msg)=>out.push({ lvl, id:e?e.id:null, label:e?`${e.flight||e.code} ${e.from&&e.to?e.from+"→"+e.to:""} · ${dayKey(e.dep||e.start).slice(8)}/${dayKey(e.dep||e.start).slice(5,7)}`:"Roster", msg });
+  const legs=events.filter(e=>e.cat==="vol"||e.cat==="mep").sort((a,b)=>a.dep-b.dep);
+  if(extra.unread>0) add("err",null,`${extra.unread} activité${extra.unread>1?"s":""} du roster illisible${extra.unread>1?"s":""}.`);
+  if(extra.fetchedAt){ const h=(Date.now()-new Date(extra.fetchedAt).getTime())/36e5; if(h>3) add("warn",null,`Roster pas mis à jour depuis ${h<48?Math.round(h)+" h":Math.round(h/24)+" jours"}.`); }
+  const seen=new Map();
+  for(const e of legs){
+    const k=e.flight+"|"+e.from+"|"+Math.round(e.dep/6e4);
+    if(seen.has(k)) add("err",e,"Vol en double dans le roster."); seen.set(k,e);
+    if(!e.from||!e.to||!e.flight){ add("err",e,"Numéro de vol ou route illisible."); continue; }
+    if(!e.info.Departure||!e.info.Arrival) add("warn",e,"Heures de départ ou d'arrivée absentes : horaires du calendrier utilisés.");
+    const d=Math.round((e.arr-e.dep)/6e4);
+    if(!(d>0)) { add("err",e,"L'arrivée est avant le départ."); continue; }
+    // Duration against great-circle distance (~780 km/h plus taxi).
+    const km=distKm(e.from,e.to);
+    if(km!=null){ const exp=km/780*60+20; if(Math.abs(d-exp)>Math.max(40,exp*.25)) add("warn",e,`Durée ${hmm(d)} inhabituelle pour ${Math.round(km)} km (attendu ≈ ${hmm(Math.round(exp))}).`); }
+    else if(d>18*60) add("err",e,`Durée ${hmm(d)} impossible.`);
+    // Local times given by the roster against the real time zone at that moment.
+    for(const [f,code,ts] of [["Departure",e.from,e.dep],["Arrival",e.to,e.arr]]){
+      const lt=legTime(e.info[f],ts), real=tzOffsetMin(code,ts);
+      if(lt&&lt.off!=null&&real!=null&&((lt.off-real)%1440+1440)%1440!==0) { let dd=((lt.off-real)%1440+1440)%1440; if(dd>=720) dd-=1440; add("warn",e,`Heure locale ${f==="Departure"?"de départ":"d'arrivée"} à ${code} : roster UTC${fmtOff(real+dd)}, fuseau réel UTC${fmtOff(real)}.`); }
+    }
+    const ci=legTime(e.info.Checkin,e.dep), co=legTime(e.info.Checkout,e.arr);
+    if(ci){ const g=(e.dep-ci.ts)/6e4; if(g<30||g>180) add("warn",e,`Check-in ${hmm(Math.round(g))} avant le départ.`); }
+    if(co){ const g=(co.ts-e.arr)/6e4; if(g<0||g>120) add("warn",e,`Check-out ${g<0?"avant l'arrivée":hmm(Math.round(g))+" après l'arrivée"}.`); }
+    if(e.start>e.dep+6e4||e.end<e.arr-6e4) add("warn",e,"Le bloc du calendrier ne couvre pas le vol.");
+    if(e.cat==="vol"){
+      if(!e.reg) add("warn",e,"Immatriculation absente.");
+      else if(!fleetType(fmtReg(e.reg))) add("info",e,`Avion ${fmtReg(e.reg)} hors de ta flotte enregistrée.`);
+      if(e.crew.length&&!e.crew.some(g=>g.people.some(p=>p.code===ME))) add("warn",e,`Ton trigramme ${ME} n'apparaît pas dans l'équipage.`);
+      const ck=new Set(); e.crew.forEach(g=>{ if(/^(CPT|CDB|CMD|F\/O|OPL|OBT|OPR|SIC|PNT)/.test(g.role)) g.people.forEach(p=>ck.add(p.code)); });
+      if(e.crew.length&&ck.size<2) add("warn",e,`Seulement ${ck.size} pilote dans l'équipage.`);
+      const off=events.find(o=>o.cat==="off"&&Math.min(o.end,e.arr)-Math.max(o.start,e.dep)>60*6e4);
+      if(off) add("warn",e,`Vol pendant une activité ${off.code}.`);
+      const r=realTimes(e);
+      if(r){ const rb=Math.round((r.in-r.out)/6e4); if(Math.abs(r.out-e.dep)>3*36e5||Math.abs(rb-d)>90) add("warn",e,`Heures réelles saisies loin de l'horaire (block ${hmm(rb)} pour ${hmm(d)} prévu).`); }
+    }
+  }
+  // Chaining: legs of one duty must connect, without overlap; rest between duties.
+  for(let i=1;i<legs.length;i++){
+    const a=legs[i-1], b=legs[i], gap=(b.dep-a.arr)/6e4;
+    if(gap<0){ add("err",b,`Chevauche ${a.flight} ${a.from}→${a.to}.`); continue; }
+    if(gap<6*60){
+      if(a.to!==b.from) add("err",b,`Trajet discontinu : arrivée à ${a.to}, départ suivant de ${b.from}.`);
+      else if(gap<25) add("warn",b,`Escale de ${gap} min seulement à ${b.from}.`);
+    } else {
+      const endA=(legTime(a.info.Checkout,a.arr)||{ts:a.arr+30*6e4}).ts, startB=(legTime(b.info.Checkin,b.dep)||{ts:b.dep-90*6e4}).ts;
+      const rest=(startB-endA)/6e4; if(rest<10*60) add("warn",b,`Repos de ${hmm(Math.round(rest))} seulement avant ce service.`);
+    }
+  }
+  return { issues:out, legs:legs.length, at:Date.now() };
+}
+let integ={ issues:[], legs:0, at:0 };
+function runCheck(ics){
+  const unread=ics?Math.max(0,(ics.match(/BEGIN:VEVENT/g)||[]).length-state.events.length):0;
+  const prev=new Set(integ.issues.filter(i=>i.lvl!=="info").map(i=>i.label+i.msg));
+  integ=checkRoster(state.events,{ unread, fetchedAt:state.fetchedAt });
+  const fresh=integ.issues.filter(i=>i.lvl!=="info"&&!prev.has(i.label+i.msg));
+  return fresh;
+}
+function integBadge(){
+  const n=integ.issues.filter(i=>i.lvl!=="info").length;
+  if(!integ.at) return "";
+  return `<button class="integ ${n?"bad":"ok"}" id="integ-open">${n?`⚠︎ ${n} point${n>1?"s":""} à vérifier dans le roster`:`✓ Roster vérifié · ${integ.legs} vol${integ.legs>1?"s":""} contrôlé${integ.legs>1?"s":""}`}</button>`;
+}
+function issuesFor(id){ return integ.issues.filter(i=>i.id===id&&i.lvl!=="info"); }
+function openInteg(){
+  const s=document.getElementById("integsheet"), L=document.getElementById("integ-list");
+  const items=[...integ.issues].sort((a,b)=>({err:0,warn:1,info:2}[a.lvl]-{err:0,warn:1,info:2}[b.lvl]));
+  L.innerHTML=items.length?items.map(i=>`<div class="iss ${i.lvl}"><b>${esc(i.label)}</b><span>${esc(i.msg)}</span></div>`).join("")
+    :`<p class="note">Tout est cohérent : heures, durées, fuseaux horaires, enchaînement des vols, check-in et check-out, repos, équipage et avion.</p>`;
+  document.getElementById("integ-at").textContent=`Contrôle du ${dayKey(integ.at).slice(8)}/${dayKey(integ.at).slice(5,7)} à ${hm(integ.at)} · ${integ.legs} vols et mises en place`;
+  s.hidden=false; document.getElementById("scrim").hidden=false;
+}
 const fkey=(flight,dep,from)=>(flight+"-"+ymd(dep).replace(/-/g,"")+"-"+from).replace(/[^A-Za-z0-9_\-]/g,"");
 function flightRecord(e){ const b=blockOf(e); return { flight:e.flight, from:e.from, to:e.to, dep:e.dep, arr:e.arr, reg:fmtReg(e.reg), role:e.role||"", block:b.min, night:nightMinutes(e.from,e.to,b.dep,b.arr), real:b.real }; }
 let archive=new Map(Object.entries(store.get("flights")||{}));
@@ -1385,7 +1489,8 @@ function setStatus(){
   if(!state.fetchedAt){ el.textContent=state.events.length?`${state.events.length} activités chargées`:"En attente du roster…"; return; }
   const ago=Math.round((Date.now()-new Date(state.fetchedAt).getTime())/60000);
   const txt=ago<1?"à l'instant":ago<60?`il y a ${ago} min`:ago<1440?`il y a ${Math.round(ago/60)} h`:`il y a ${Math.round(ago/1440)} j`;
-  el.textContent=`Mis à jour ${txt} · ${state.events.length} activités`;
+  const n=integ.issues.filter(i=>i.lvl!=="info").length;
+  el.textContent=`Mis à jour ${txt} · ${state.events.length} activités · ${integ.at?(n?n+" point"+(n>1?"s":"")+" à vérifier":"vérifié, rien à signaler"):""}`;
 }
 function tick(){
   const now=Date.now();
@@ -1399,9 +1504,11 @@ function load(ics, fetchedAt, first){
   const changed=ics!==lastIcs; lastIcs=ics; if(fetchedAt) state.fetchedAt=fetchedAt;
   if(changed){
     state.events=parseICS(ics); store.set("cache",{ics,fetchedAt:state.fetchedAt});
+    const fresh=runCheck(ics);
+    if(!first&&fresh.length) toast(`Roster mis à jour : ${fresh.length} nouveau${fresh.length>1?"x":""} point${fresh.length>1?"s":""} à vérifier`);
     const y=window.scrollY; render();
     if(first || (!userMoved && state.view==="band")) anchorToday(); else window.scrollTo(0,y);
-  }
+  } else { runCheck(ics); const b=document.getElementById("integ-open"); if(b) b.outerHTML=integBadge(); }
   setStatus(); return true;
 }
 let userMoved=false;
@@ -1434,7 +1541,9 @@ window.addEventListener("scroll",()=>{
 /* ---------- controls ---------- */
 const sheet=document.getElementById("sheet"), scrim=document.getElementById("scrim");
 const openSheet=()=>{ setStatus(); sheet.hidden=false; scrim.hidden=false; };
-const closeSheet=()=>{ sheet.hidden=true; scrim.hidden=true; const w=document.getElementById("wxsheet"); if(w) w.hidden=true; };
+const closeSheet=()=>{ sheet.hidden=true; scrim.hidden=true; const w=document.getElementById("wxsheet"); if(w) w.hidden=true; const g=document.getElementById("integsheet"); if(g) g.hidden=true; };
+document.getElementById("integ-close").onclick=closeSheet;
+document.addEventListener("click",ev=>{ if(ev.target.closest&&ev.target.closest("#integ-open")) openInteg(); });
 document.getElementById("t-set").onclick=openSheet;
 document.getElementById("s-close").onclick=closeSheet;
 scrim.onclick=closeSheet;
