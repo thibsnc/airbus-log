@@ -447,6 +447,9 @@ img{max-width:100%}
 (() => {
 "use strict";
 const ME = "SLA";
+// Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
+const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
+let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
 const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
@@ -854,6 +857,11 @@ function renderLog(){
   const pc=v.querySelector("#pl-copy"); if(pc) pc.onclick=()=>copyText(pilotlogCSV(selectedRows()),"pl-ta");
   const pd=v.querySelector("#pl-dl"); if(pd) pd.onclick=async()=>{
     const csv=pilotlogCSV(selectedRows()); const name=`pilotlog-${todayKey()}.csv`;
+    if(IN_CLAUDE){
+      try{ const dl=await claude.use("downloads"); if(dl){ await dl.save({filename:name,data:csv}); toast("Fichier enregistré"); return; } }
+      catch(err){ if(err && err.code==="declined") return; }
+      copyText(csv,"pl-ta"); return;
+    }
     try{
       const file=new File([csv],name,{type:"text/csv"});
       if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; }
@@ -1094,6 +1102,14 @@ async function fetchData(key){
 }
 let busy=false, lastRefresh=0;
 async function refreshAll(manual){
+  if(IN_CLAUDE){
+    if(!manual) return;
+    if(claudeMcp && claudeTrigger){
+      try{ await claudeMcp.callTool("Claude Code Remote","fire_trigger",{trigger_id:claudeTrigger}); toast("Relecture lancée : mise à jour d'ici 1 à 3 minutes."); }
+      catch(e){ toast("Mise à jour impossible pour l'instant."); }
+    } else toast("Le roster est relu automatiquement toutes les heures.");
+    return;
+  }
   if(!apiKey){ showKey(); return; }
   if(busy) return; busy=true; lastRefresh=Date.now();
   const btns=[document.getElementById("b-refresh"),document.getElementById("s-refresh")];
@@ -1276,10 +1292,28 @@ if(!state.activeDay){ const t=todayKey(); const d=new Date(keyToStart(t)+off());
 const cwx=store.get("wx");
 if(cwx && cwx.metars){ wx.metars=cwx.metars; wx.tafs=cwx.tafs||{}; wx.fetchedAt=cwx.fetchedAt||null; renderWx(); }
 syncArchive();
-if(apiKey) refreshAll(false); else showKey();
-setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); },10*60*1000);
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && Date.now()-lastRefresh>3*60*1000) refreshAll(false); });
-if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+if(IN_CLAUDE){
+  (async()=>{
+    claude.use("mcp").then(n=>{ claudeMcp=n; }).catch(()=>{});
+    let db=null; try{ db=await claude.use("db"); }catch(e){}
+    if(!db) return;
+    db.doc("roster/current").onSnapshot(snap=>{
+      if(!snap.exists) return; const d=snap.data()||{};
+      if(d.refreshTask) claudeTrigger=d.refreshTask;
+      if(d.ics){ load(d.ics,d.fetchedAt,!state.events.length); syncArchive(); renderWx(); }
+    },()=>{});
+    db.doc("wx/current").onSnapshot(snap=>{
+      if(!snap.exists) return; const d=snap.data()||{};
+      wx.metars=d.metars||{}; wx.tafs=d.tafs||{}; wx.fetchedAt=d.fetchedAt||null;
+      renderWx(); if(!document.getElementById("wxsheet").hidden) renderWxSheet();
+    },()=>{});
+  })();
+} else {
+  if(apiKey) refreshAll(false); else showKey();
+  setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); },10*60*1000);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && Date.now()-lastRefresh>3*60*1000) refreshAll(false); });
+  if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
 })();
 </script>
 </body>
