@@ -206,9 +206,13 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ver span{font-size:13.5px;font-weight:600}
 .ver b{font-family:var(--f-mono);font-size:15px;text-align:right}
 .ver small{grid-column:1/-1;font-size:12px;color:var(--muted)}
-.ltc-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.ltc-photo .btn{padding:8px 13px;font-size:13.5px}
+.ltc-row:has(.ltc-cam){display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ltc-row .btn{padding:11px 8px;font-size:14px;white-space:nowrap;justify-content:center}
+.ltc-row .ltc-ok{grid-column:1/-1}
+@media (max-width:380px){.ltc-row .btn{font-size:12.5px;padding:10px 6px}.ltc-cam svg{display:none}}
+.ltc-cam{display:inline-flex;align-items:center;gap:6px}
 .ltc-ocr{font-size:12.5px;font-weight:600;color:var(--muted)}
+.ltc-ocr:empty{display:none}
 .ltc-g input.ocr{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
 .ltc-err{font-size:12.5px;font-weight:600;color:var(--accent)}
 .warn{font-size:12.5px;color:var(--fg);background:color-mix(in srgb,var(--gold) 22%,var(--surface));border-radius:10px;padding:8px 10px}
@@ -564,7 +568,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.0", date:"2026-10-08" };
+const APP_VERSION = { n:"1.1", date:"2026-10-08" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1165,7 +1169,7 @@ const ocrState={}; // per flight: { msg, filled:[keys], text }
 function renderLogTen(){
   const v=document.getElementById("view"); const fl=ltFlights();
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
-  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Prends le récap en photo, ou tape les heures réelles en UTC (ex. 0125), puis touche « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur le récap, puis « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
   if(!fl.length) h+=`<div class="box"><p>Aucun vol sur les 45 derniers jours.</p></div>`;
   for(const e of fl){
     const d=ltData[e.id]||{}, ac=ltAircraft(e), reg=ac.reg, c=ltCheck(e);
@@ -1176,7 +1180,6 @@ function renderLogTen(){
         <select data-a="type" aria-label="Type">${Object.keys(FLEET).map(t=>`<option ${ac.type===t?"selected":""}>${t}</option>`).join("")}</select>
         <select data-a="reg" aria-label="Immatriculation">${(FLEET[ac.type]||[]).map(r=>`<option ${reg===r?"selected":""}>${r}</option>`).join("")}${FLEET[ac.type]&&FLEET[ac.type].includes(reg)?"":`<option selected>${esc(reg||"—")}</option>`}</select>
       </div>
-      <div class="ltc-photo"><button class="btn ghost" data-act="photo">Photo du récap</button><input type="file" accept="image/*" data-a="photo" hidden><span class="ltc-ocr">${ocrState[e.id]?esc(ocrState[e.id].msg):""}</span></div>
       <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" class="${ocrState[e.id]&&ocrState[e.id].filled.includes(k)?"ocr":""}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
       <div class="ltc-opts">
@@ -1185,7 +1188,8 @@ function renderLogTen(){
         <label class="ltc-app">Approche <select data-o="app"><option value="">—</option>${APP_TYPES.map(a=>`<option ${d.app===a?"selected":""}>${a}</option>`).join("")}</select>
           <input data-o="rwy" placeholder="Piste" maxlength="4" autocomplete="off" value="${esc(d.rwy||"")}"></label>
       </div>
-      <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}</div>
+      <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button><button class="btn ghost ltc-cam" data-act="photo"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>Prendre en photo</button><input type="file" accept="image/*" data-a="photo" hidden>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}</div>
+      <div class="ltc-ocr">${ocrState[e.id]?esc(ocrState[e.id].msg):""}</div>
     </div>`;
   }
   h+=`</div>`;
