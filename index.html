@@ -569,7 +569,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.2", date:"2026-10-08" };
+const APP_VERSION = { n:"1.3", date:"2026-10-08" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1095,7 +1095,6 @@ function ltURL(e,t){
   if(d.pf){
     if(isNightAt(e.from,t.off)) o.flight_nightTakeoffs=1; else o.flight_dayTakeoffs=1;
     if(isNightAt(e.to,t.on)) o.flight_nightLandings=1; else o.flight_dayLandings=1;
-    if(d.auto) o.flight_autolands=1;
   }
   if(d.app) o.flight_selectedApproach1=`1;${d.app};${(d.rwy||"").toUpperCase()};${icao(e.to)}`;
   // Duty: on duty at the first leg's check-in, off duty at the last leg's check-out.
@@ -1202,7 +1201,6 @@ function renderLogTen(){
       <div class="ltc-sum">${ltSummary(e)}</div>
       <div class="ltc-opts">
         <label class="chk"><input type="checkbox" data-o="pf" ${d.pf?"checked":""}> Pilot flying</label>
-        <label class="chk"><input type="checkbox" data-o="auto" ${d.auto?"checked":""} ${d.pf?"":"disabled"}> Autoland</label>
         <label class="ltc-app">Approche <select data-o="app"><option value="">—</option>${APP_TYPES.map(a=>`<option ${d.app===a?"selected":""}>${a}</option>`).join("")}</select>
           <input data-o="rwy" placeholder="Piste" maxlength="4" autocomplete="off" value="${esc(d.rwy||"")}"></label>
       </div>
@@ -1241,7 +1239,6 @@ function renderLogTen(){
     });
     card.querySelectorAll(".ltc-opts [data-o]").forEach(el=>{
       const save=()=>{ const v=el.type==="checkbox"?el.checked:el.value.trim().toUpperCase(); ltData[id]=Object.assign({},ltData[id],{[el.dataset.o]:v});
-        if(el.dataset.o==="pf"){ const au=card.querySelector('[data-o="auto"]'); au.disabled=!el.checked; if(!el.checked){ au.checked=false; ltData[id].auto=false; } }
         ltSave(); };
       el.addEventListener("change",save); if(el.tagName==="INPUT"&&el.type!=="checkbox") el.addEventListener("input",save);
     });
