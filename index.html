@@ -1601,12 +1601,18 @@ const openSheet=()=>{ setStatus(); renderVersion(); sheet.hidden=false; scrim.hi
 const verDate=d=>{ const [y,m,j]=d.split("-").map(Number); return j+" "+MONTHS[m-1]+" "+y; };
 const verNum=v=>v.split(".").map(Number), verCmp=(a,b)=>{ const x=verNum(a), y=verNum(b); return (x[0]-y[0])||(x[1]-y[1]); };
 // Shows this app's version; on the owner's app, also the version colleagues have on the shared site.
+let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;
   const mine=`<div><span>${/netlify\.app$/.test(location.hostname)?"Version de l'app":"Ta version"}</span><b>${APP_VERSION.n}</b><small>${verDate(APP_VERSION.date)}</small></div>`;
   if(/netlify\.app$/.test(location.hostname)){ el.innerHTML=mine; return; }
   el.innerHTML=mine+`<div><span>Version des collègues</span><b>…</b><small>vérification</small></div>`;
   let row;
+  if(IN_CLAUDE){ // the preview cannot reach other sites: Claude writes the shared version to meta/shared on each publish
+    const v=sharedVer;
+    row = v ? `<b>${esc(v.n)}</b><small>${esc(verDate(v.date))} · ${verCmp(v.n,APP_VERSION.n)>=0?"à jour":"en retard sur la tienne"}</small>` : `<b>—</b><small>pas encore renseignée</small>`;
+    el.innerHTML=mine+`<div><span>Version des collègues</span>${row}</div>`; return;
+  }
   try{
     const r=await fetch("https://aci-log.netlify.app/version.json?t="+Date.now(),{cache:"no-store"});
     if(r.status===404) row=`<b>avant 1.0</b><small>pas encore numérotée</small>`;
@@ -1928,6 +1934,7 @@ if(IN_CLAUDE){
       if(d.refreshTask) claudeTrigger=d.refreshTask;
       if(d.ics){ load(d.ics,d.fetchedAt,!state.events.length); syncArchive(); renderWx(); }
     },()=>{});
+    db.doc("meta/shared").onSnapshot(snap=>{ sharedVer=snap.exists?snap.data():null; if(!sheet.hidden) renderVersion(); },()=>{});
     db.doc("wx/current").onSnapshot(snap=>{
       if(!snap.exists) return; const d=snap.data()||{};
       wx.metars=d.metars||{}; wx.tafs=d.tafs||{}; wx.fetchedAt=d.fetchedAt||null;

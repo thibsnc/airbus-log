@@ -14,6 +14,8 @@
   Only add `[netlify]` when the owner asks to update the shared version (colleagues), not on routine changes.
   After each `[netlify]` deploy, tell the owner it cost 15 credits and how many remain this month
   (read it with the Netlify connector when connected; otherwise say where to look: Team settings → Billing → Usage).
+  Then write the published version to the preview's store (ArtifactData set `meta/shared` = {n, date} from
+  version.json): the preview cannot fetch aci-log.netlify.app itself.
 - Version shown in Réglages: run `python3 scripts/bump.py` once per change set to index.html (updates
   APP_VERSION and version.json). The owner's app compares it with https://aci-log.netlify.app/version.json.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
