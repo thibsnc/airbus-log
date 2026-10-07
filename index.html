@@ -186,6 +186,8 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-app{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600}
 .ltc-app select,.ltc-app input{font:inherit;font-weight:700;padding:6px 8px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
 .ltc-app input{width:62px;text-transform:uppercase}
+.ltc-ac{display:flex;gap:8px;flex-wrap:wrap}
+.ltc-ac select{font:inherit;font-weight:700;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
 .ltc-type{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600}
 .ltc-type input{font:inherit;font-weight:700;width:90px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);text-transform:uppercase}
 .ltc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -915,7 +917,7 @@ function lbFlights(){
 }
 function lbRow(e){
   const block=Math.max(0,Math.round((e.arr-e.dep)/60000)); const isMep=e.cat==="mep"; const min=isMep?0:block; const cap=isMep?"":capacity(e.role);
-  return { e, min, block, cap, date:e.dep, reg:regFmt(e.reg), type:(lbState.types[regFmt(e.reg)]||"").toUpperCase(),
+  return { e, min, block, cap, date:e.dep, reg:regFmt(e.reg), type:(fleetType(regFmt(e.reg))||lbState.types[regFmt(e.reg)]||"").toUpperCase(),
     pic: cap==="PIC"?"SELF":crewName(e,/^CPT/), sic: cap==="SIC"?"SELF":crewName(e,/^F\/O/) };
 }
 function selectedRows(){ return lbFlights().filter(e=>!lbState.skip.has(e.id)).map(lbRow); }
@@ -953,6 +955,10 @@ async function copyText(text, fallbackId){
   catch(e){ const ta=document.getElementById(fallbackId); if(ta){ ta.hidden=false; ta.value=text; ta.focus(); ta.select(); toast("Sélectionné : copie-le avec Copier"); } }
 }
 /* ---------- LogTen quick entry ---------- */
+// Fleet as given by the owner: type -> registrations.
+const FLEET={ "A20N":["F-ONEA","F-OTIB"], "A30N":["F-ONEO","F-ONET"] };
+function fleetType(reg){ for(const [t,rs] of Object.entries(FLEET)) if(rs.includes(reg)) return t; return ""; }
+function ltAircraft(e){ const d=ltData[e.id]||{}; const reg=d.reg||fmtReg(e.reg); const type=d.type||fleetType(reg)||(lbState.types[reg]||"").toUpperCase(); return { reg, type }; }
 const LT_FIELDS=[["out","Block out"],["off","Takeoff"],["on","Landing"],["in","Block in"]];
 let ltData=store.get("ltForm")||{};
 function ltSave(){ store.set("ltForm",ltData); }
@@ -996,7 +1002,7 @@ function isNightAt(code,ts){ const c=COORD[code]; return c ? sunElev(ts,c[0],c[1
 const APP_TYPES=["ILS","RNP","RNAV","LOC","VOR","NDB","VISUAL"];
 function ltURL(e,t){
   const d=ltData[e.id]||{};
-  const reg=fmtReg(e.reg), type=(lbState.types[reg]||"").toUpperCase(), cap=capacity(e.role);
+  const { reg, type }=ltAircraft(e), cap=capacity(e.role);
   const block=hmm(Math.round((t.in-t.out)/6e4)), f=ts=>dmy(ts)+" "+hmUTC(ts);
   const o={ entity_name:"Flight", flight_key:"airbuslog-"+e.flight+"-"+ymd(e.dep).replace(/-/g,"")+"-"+e.from,
     flight_flightDate:dmy(t.out), flight_flightNumber:e.flight, flight_from:icao(e.from), flight_to:icao(e.to),
@@ -1038,10 +1044,14 @@ function renderLogTen(){
   h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125), puis touche « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
   if(!fl.length) h+=`<div class="box"><p>Aucun vol sur les 45 derniers jours.</p></div>`;
   for(const e of fl){
-    const d=ltData[e.id]||{}, reg=fmtReg(e.reg), c=ltCheck(e);
+    const d=ltData[e.id]||{}, ac=ltAircraft(e), reg=ac.reg, c=ltCheck(e);
     const ph={out:hmUTC(e.dep),off:"",on:"",in:hmUTC(e.arr)};
     h+=`<div class="box ltc" data-id="${esc(e.id)}">
       <div class="ltc-h">${e.test?'<span class="fc-role" style="color:var(--accent)">TEST</span>':""}<b>${esc(e.flight)}</b><span class="r">${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(reg)}${e.role?" · "+esc(e.role):""}</small></div>
+      <div class="ltc-ac">
+        <select data-a="type" aria-label="Type">${Object.keys(FLEET).map(t=>`<option ${ac.type===t?"selected":""}>${t}</option>`).join("")}</select>
+        <select data-a="reg" aria-label="Immatriculation">${(FLEET[ac.type]||[]).map(r=>`<option ${reg===r?"selected":""}>${r}</option>`).join("")}${FLEET[ac.type]&&FLEET[ac.type].includes(reg)?"":`<option selected>${esc(reg||"—")}</option>`}</select>
+      </div>
       <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
       <div class="ltc-opts">
@@ -1050,7 +1060,6 @@ function renderLogTen(){
         <label class="ltc-app">Approche <select data-o="app"><option value="">—</option>${APP_TYPES.map(a=>`<option ${d.app===a?"selected":""}>${a}</option>`).join("")}</select>
           <input data-o="rwy" placeholder="Piste" maxlength="4" autocomplete="off" value="${esc(d.rwy||"")}"></label>
       </div>
-      ${reg && !(lbState.types[reg]||"").trim() ? `<label class="ltc-type">Type ${esc(reg)} <input id="lt-type-${esc(e.id)}" data-reg="${esc(reg)}" placeholder="A20N" autocomplete="off"></label>`:""}
       <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}</div>
     </div>`;
   }
@@ -1076,11 +1085,18 @@ function renderLogTen(){
         ltSave(); };
       el.addEventListener("change",save); if(el.tagName==="INPUT"&&el.type!=="checkbox") el.addEventListener("input",save);
     });
-    const ty=card.querySelector(".ltc-type input");
-    if(ty) ty.addEventListener("change",()=>{ lbState.types[ty.dataset.reg]=ty.value.trim().toUpperCase(); store.set("types",lbState.types); });
+    const selT=card.querySelector('[data-a="type"]'), selR=card.querySelector('[data-a="reg"]');
+    selT.addEventListener("change",()=>{
+      const regs=FLEET[selT.value]||[]; const cur=selR.value;
+      const keep=regs.includes(cur)?cur:regs[0];
+      selR.innerHTML=regs.map(r=>`<option ${r===keep?"selected":""}>${r}</option>`).join("");
+      ltData[id]=Object.assign({},ltData[id],{type:selT.value,reg:keep}); ltSave();
+      card.querySelector(".ltc-h small").textContent=`${dmy(e.dep).slice(0,5)} · ${keep}${e.role?" · "+e.role:""}`;
+    });
+    selR.addEventListener("change",()=>{ ltData[id]=Object.assign({},ltData[id],{type:selT.value,reg:selR.value}); ltSave();
+      card.querySelector(".ltc-h small").textContent=`${dmy(e.dep).slice(0,5)} · ${selR.value}${e.role?" · "+e.role:""}`; });
     card.querySelector('[data-act="import"]').onclick=()=>{
       const c=ltCheck(e); if(!c.ok) return;
-      if(ty && ty.value.trim()){ lbState.types[ty.dataset.reg]=ty.value.trim().toUpperCase(); store.set("types",lbState.types); }
       ltData[id]=Object.assign({},ltData[id],{sent:Date.now()}); ltSave();
       location.href=ltURL(e,c.t);
       setTimeout(()=>{ const y=scrollY; renderLogTen(); scrollTo(0,y); },800);
@@ -1096,7 +1112,8 @@ function renderLogExport(){
   const sel=rows.filter(r=>!lbState.skip.has(r.e.id));
   const total=sel.reduce((n,r)=>n+r.min,0);
   const regs=[...new Set(rows.map(r=>r.reg).filter(Boolean))];
-  const missing=regs.filter(r=>!(lbState.types[r]||"").trim());
+  const missing=regs.filter(r=>!fleetType(r)&&!(lbState.types[r]||"").trim());
+  const unknownRegs=regs.filter(r=>!fleetType(r));
   const pBtn=(id,l)=>`<button data-p="${id}" aria-pressed="${lbState.period===id}">${l}</button>`;
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
   h+=`<div class="box"><h3>Vols à exporter</h3><div class="seg" id="lb-period">${pBtn("month","Ce mois")}${pBtn("prev","Mois dernier")}${pBtn("all","Tout")}</div>
@@ -1106,9 +1123,9 @@ function renderLogExport(){
        <div class="lbsum"><span>${sel.length} vol${sel.length>1?"s":""} sélectionné${sel.length>1?"s":""}</span><span>${hmm(total)} block</span></div>`;
   } else h+=`<p>Aucun vol réalisé sur cette période.</p>`;
   h+=`</div>`;
-  if(regs.length){
+  if(unknownRegs.length){
     h+=`<div class="box"><h3>Type d'avion par immatriculation</h3><p>Code OACI du type, par exemple A20N ou A339. Mémorisé sur cet appareil.</p><div class="types">`+
-       regs.map(r=>`<label>${esc(r)}<input id="ty-${esc(r)}" data-reg="${esc(r)}" class="ty" value="${esc(lbState.types[r]||"")}" placeholder="Type" autocomplete="off"></label>`).join("")+`</div></div>`;
+       unknownRegs.map(r=>`<label>${esc(r)}<input id="ty-${esc(r)}" data-reg="${esc(r)}" class="ty" value="${esc(lbState.types[r]||"")}" placeholder="Type" autocomplete="off"></label>`).join("")+`</div></div>`;
   }
   h+=`<div class="warn">Le roster donne les heures programmées. Elles sont importées comme heures block : corrige-les dans ton logbook si le vol a eu de l'avance ou du retard.</div>`;
   h+=`<div class="box"><div class="t">LogTen Pro</div>
