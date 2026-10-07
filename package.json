@@ -1,0 +1,8 @@
+{
+  "name": "aci-log",
+  "private": true,
+  "description": "Netlify functions for the shared ACI LOG site (the app itself is index.html).",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

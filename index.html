@@ -202,6 +202,17 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .iss.warn{border-left-color:#e0a100}
 .iss.info{opacity:.75}
 .fc-warn{font-size:12px;font-weight:700;color:var(--accent);padding:2px 0}
+.keyscreen input.who-in{font-family:var(--f-ui);font-weight:600}
+.users{display:grid;gap:6px}
+.users .muted{color:var(--muted);font-weight:600}
+.users .u-sum{font-size:13.5px;font-weight:700}
+.users .u{display:grid;grid-template-columns:1fr auto;column-gap:10px;background:var(--surface-2);border-radius:10px;padding:8px 12px}
+.users .u b{font-size:14px}
+.users .u em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right}
+.users .u small{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.users .code{display:flex;gap:8px;align-items:center}
+.users .code code{flex:1;font-family:var(--f-mono);font-size:13px;background:var(--surface-2);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
+.users ol{margin:0;padding-left:20px;font-size:13px;display:grid;gap:4px}
 .ver{display:grid;gap:6px}
 .ver div{display:grid;grid-template-columns:1fr auto;column-gap:10px;align-items:baseline;background:var(--surface-2);border-radius:10px;padding:8px 12px}
 .ver span{font-size:13.5px;font-weight:600}
@@ -526,6 +537,7 @@ img{max-width:100%}
     <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
     <h3>Version</h3>
     <div class="ver" id="ver"></div>
+    <div id="users-wrap" hidden><h3>Utilisateurs de la version partagée</h3><div class="users" id="users"></div></div>
     <button class="btn ghost" id="s-key">Changer de roster</button>
     <button class="btn ghost" id="s-close">Fermer</button>
   </div>
@@ -550,6 +562,18 @@ img{max-width:100%}
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="keyscreen" id="whoscreen" hidden>
+  <div class="in">
+    <h2>Bienvenue sur ACI LOG</h2>
+    <p>Indique ton prénom et ton nom. Ils sont visibles uniquement par Thibaut, qui gère l'app, pour savoir qui l'utilise. Ton lien de roster, lui, reste sur ton téléphone.</p>
+    <form id="whoform" autocomplete="on">
+      <input id="who-first" class="who-in" placeholder="Prénom" autocomplete="given-name" autocapitalize="words" required>
+      <input id="who-last" class="who-in" placeholder="Nom" autocomplete="family-name" autocapitalize="characters" required>
+      <button class="btn" type="submit">Continuer</button>
+    </form>
+    <p class="err" id="whomsg"></p>
+  </div>
+</div>
 <div class="keyscreen" id="keyscreen" hidden>
   <div class="in">
     <h2>ACI LOG</h2>
@@ -569,7 +593,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.3", date:"2026-10-08" };
+const APP_VERSION = { n:"1.4", date:"2026-10-08" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1594,10 +1618,67 @@ window.addEventListener("scroll",()=>{
 
 /* ---------- controls ---------- */
 const sheet=document.getElementById("sheet"), scrim=document.getElementById("scrim");
-const openSheet=()=>{ setStatus(); renderVersion(); sheet.hidden=false; scrim.hidden=false; };
+const openSheet=()=>{ setStatus(); renderVersion(); renderUsers(); sheet.hidden=false; scrim.hidden=false; };
 const verDate=d=>{ const [y,m,j]=d.split("-").map(Number); return j+" "+MONTHS[m-1]+" "+y; };
 const verNum=v=>v.split(".").map(Number), verCmp=(a,b)=>{ const x=verNum(a), y=verNum(b); return (x[0]-y[0])||(x[1]-y[1]); };
 // Shows this app's version; on the owner's app, also the version colleagues have on the shared site.
+/* ---------- who uses the shared version ---------- */
+const ON_SHARED=/netlify\.app$/.test(location.hostname);
+function deviceId(){ let id=store.get("dev"); if(!id){ id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)); store.set("dev",id); } return id; }
+// Prefill from the roster: the person whose trigram is ME ("Sola Thibaut" -> Thibaut / SOLA).
+function rosterSelfName(){
+  for(const e of state.events) for(const g of e.crew||[]){ const p=g.people.find(x=>x.code===ME); if(p&&p.name){ const w=p.name.trim().split(/\s+/); if(w.length>1) return { first:w[w.length-1], last:w.slice(0,-1).join(" ") }; } }
+  return null;
+}
+function showWho(){
+  const sc=document.getElementById("whoscreen"), f=document.getElementById("who-first"), l=document.getElementById("who-last");
+  const n=rosterSelfName(); const cap=w=>w.toLowerCase().replace(/(^|[\s-])(\p{L})/gu,(m,a,c)=>a+c.toUpperCase());
+  if(n&&!f.value&&!l.value){ f.value=cap(n.first); l.value=n.last.toUpperCase(); }
+  sc.hidden=false;
+}
+function needWho(){ return ON_SHARED && !!rosterUrl && !store.get("who"); }
+async function pingUsage(force){
+  if(!ON_SHARED||!rosterUrl) return; const who=store.get("who"); if(!who) return;
+  const last=store.get("pingAt")||0; if(!force && Date.now()-last<6*36e5) return;
+  try{ const r=await fetch("/api/usage",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ id:deviceId(), first:who.first, last:who.last, trig:ME, version:APP_VERSION.n, standalone:!!(navigator.standalone||matchMedia("(display-mode: standalone)").matches) })});
+    if(r.ok) store.set("pingAt",Date.now()); }catch(_){}
+}
+document.getElementById("whoform").addEventListener("submit",e=>{
+  e.preventDefault();
+  const first=document.getElementById("who-first").value.trim(), last=document.getElementById("who-last").value.trim();
+  if(!first||!last){ document.getElementById("whomsg").textContent="Prénom et nom, s'il te plaît."; return; }
+  store.set("who",{first,last}); document.getElementById("whoscreen").hidden=true; pingUsage(true); toast("Merci "+first+" !");
+});
+// Owner side: admin code derived from the access key (never the key itself), compared by the Netlify function.
+async function adminCode(){
+  if(!apiKey) return null;
+  const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("aci-log-admin:"+apiKey));
+  return [...new Uint8Array(h)].slice(0,12).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function agoTxt(iso){ const m=Math.round((Date.now()-new Date(iso).getTime())/6e4); return m<2?"à l'instant":m<60?`il y a ${m} min`:m<1440?`il y a ${Math.round(m/60)} h`:`il y a ${Math.round(m/1440)} j`; }
+async function renderUsers(){
+  const wrap=document.getElementById("users-wrap"), el=document.getElementById("users"); if(!wrap) return;
+  if(ON_SHARED||(!apiKey&&!IN_CLAUDE)){ wrap.hidden=true; return; }
+  wrap.hidden=false;
+  if(IN_CLAUDE){ el.innerHTML=`<p class="note">Visible dans ton app sur iPhone.</p>`; return; }
+  const code=await adminCode();
+  const setup=(why)=>`<p class="note">${why}</p><div class="code"><code>${code}</code><button class="btn ghost" id="copy-admin">Copier</button></div>
+    <ol><li>Sur app.netlify.com, ouvre le site <b>aci-log</b>.</li><li><b>Site configuration</b> → <b>Environment variables</b> → <b>Add a variable</b>.</li><li>Key : <b>ADMIN_CODE</b>, Value : colle le code, puis <b>Create variable</b>.</li><li>Dis-moi « publie pour les collègues ».</li></ol>`;
+  el.innerHTML=`<p class="note">Chargement…</p>`;
+  let r; try{ r=await fetch("https://aci-log.netlify.app/api/usage?t="+Date.now(),{headers:{"x-admin":code},cache:"no-store"}); }
+  catch(_){ el.innerHTML=`<p class="note">Liste injoignable pour l'instant (connexion ?).</p>`; return; }
+  if(r.status===404||r.status===503) el.innerHTML=setup("Pas encore activé. Pour voir qui utilise l'app, donne ce code admin à Netlify (une seule fois) :");
+  else if(r.status===401) el.innerHTML=setup("Le code admin enregistré sur Netlify ne correspond pas. Remplace-le par celui-ci :");
+  else if(!r.ok) el.innerHTML=`<p class="note">Liste injoignable pour l'instant.</p>`;
+  else {
+    const { users=[] }=await r.json(); const week=users.filter(u=>Date.now()-new Date(u.lastSeen).getTime()<7*864e5).length;
+    el.innerHTML=`<div class="u-sum">${users.length} utilisateur${users.length>1?"s":""} · ${week} actif${week>1?"s":""} ces 7 derniers jours</div>`+
+      (users.length?users.map(u=>`<div class="u"><b>${esc(u.first)} ${esc(String(u.last).toUpperCase())}${u.trig?` <span class="muted">(${esc(u.trig)})</span>`:""}</b><em>v${esc(u.version||"?")}</em><small>Vu ${esc(agoTxt(u.lastSeen))} · ${u.opens} ouverture${u.opens>1?"s":""} · depuis le ${esc(dmy(new Date(u.firstSeen).getTime()).slice(0,5))}${u.standalone?" · installée":""}</small></div>`).join(""):`<p class="note">Personne pour l'instant.</p>`);
+  }
+  const cb=document.getElementById("copy-admin");
+  if(cb) cb.onclick=async()=>{ try{ await navigator.clipboard.writeText(code); toast("Code admin copié"); }catch(_){ toast("Sélectionne le code pour le copier"); } };
+}
 let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;
@@ -1764,6 +1845,7 @@ document.getElementById("keyform").addEventListener("submit",async e=>{
       if(info.trig){ ME=info.trig; store.set("me",ME); }
       document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); render();
       fetchWxLink().catch(()=>{});
+      if(needWho()) showWho(); else pingUsage(true);
     }catch(err){ msg.textContent= err.code==="badlink" ? "Ce lien n'est pas accepté. Copie-le de nouveau depuis le portail équipage." : err.code===502 ? "Le portail Aircalin ne répond pas. Vérifie ton lien ou réessaie dans un moment." : "Connexion impossible. Vérifie ton réseau et réessaie. ("+(err.message||err)+")"; }
   } else {
     try{ await fetchData(k); apiKey=k; store.set("key",k); rosterUrl=""; store.set("rosterUrl",""); document.getElementById("keyscreen").hidden=true; msg.textContent=""; toast("Roster chargé"); anchorToday(); }
@@ -1939,9 +2021,9 @@ if(IN_CLAUDE){
     },()=>{});
   })();
 } else {
-  if(apiKey || rosterUrl) refreshAll(false); else showKey();
+  if(apiKey || rosterUrl) refreshAll(false).then(()=>{ if(needWho()) showWho(); else pingUsage(false); }); else showKey();
   setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); },10*60*1000);
-  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && Date.now()-lastRefresh>3*60*1000) refreshAll(false); });
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ if(Date.now()-lastRefresh>3*60*1000) refreshAll(false); pingUsage(false); } });
   if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }
 })();
