@@ -192,6 +192,10 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-type input{font:inherit;font-weight:700;width:90px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);text-transform:uppercase}
 .ltc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ltc-ok{font-size:12px;font-weight:700;color:var(--green)}
+.ltc-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ltc-photo .btn{padding:8px 13px;font-size:13.5px}
+.ltc-ocr{font-size:12.5px;font-weight:600;color:var(--muted)}
+.ltc-g input.ocr{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
 .ltc-err{font-size:12.5px;font-weight:600;color:var(--accent)}
 .warn{font-size:12.5px;color:var(--fg);background:color-mix(in srgb,var(--gold) 22%,var(--surface));border-radius:10px;padding:8px 10px}
 .sumwrap{max-width:760px;margin:0 auto;padding:0 16px 10px}
@@ -1038,10 +1042,83 @@ function ltSummary(e){
   if(!c.ok) return c.msg?`<span class="ltc-err">${esc(c.msg)}</span>`:`<span>Block <b>—</b></span><span>Air time <b>—</b></span>`;
   return `<span>Block <b>${hmm(c.block)}</b></span><span>Air time <b>${hmm(c.air)}</b></span><span>Prévu <b>${hmm(Math.round((e.arr-e.dep)/6e4))}</b></span>`;
 }
+/* ---------- Photo of the flight recap: on-device text reading (OCR) ---------- */
+// Labels as they appear on recaps, ACARS prints or logbook screens. Longest forms first, so "BLOCK OFF" is not read as "OFF".
+const OCR_LABELS=[
+  ["out",/\b(?:BLOCKS?|BLK|BLCK)\s*-?\s*OFF\b|\bOFF\s*-?\s*BLOCKS?\b|\bCHOCKS?\s*OFF\b|\bOUT\b|\bATD\b/g],
+  ["in",/\b(?:BLOCKS?|BLK|BLCK)\s*-?\s*ON\b|\bON\s*-?\s*BLOCKS?\b|\bCHOCKS?\s*ON\b|\bIN\b|\bATA\b/g],
+  ["off",/\bTAKE\s*-?\s*OFF\b|\bT\s*\/\s*O\b|\bTKOF\b|\bAIRBORNE\b|\bWHEELS?\s*UP\b|\bOFF\b/g],
+  ["on",/\bLANDING\b|\bLDG\b|\bTOUCH\s*-?\s*DOWN\b|\bTDN\b|\bWHEELS?\s*DOWN\b|\bON\b/g]
+];
+const OCR_TIME=/(?<![\d\/.:-])([0-9OIl|]{1,2})\s?[:.hH]?\s?([0-9OIl|]{2})\s?Z?(?![\d:.\/-])/g;
+function ocrDigits(s){ return s.replace(/[O]/g,"0").replace(/[Il|]/g,"1"); }
+function ocrTimes(line){
+  const out=[]; let m; OCR_TIME.lastIndex=0;
+  while((m=OCR_TIME.exec(line))){ const h=+ocrDigits(m[1]), mi=+ocrDigits(m[2]);
+    if(!isNaN(h)&&!isNaN(mi)&&h<24&&mi<60&&/\d/.test(m[0])) out.push({pos:m.index,min:h*60+mi}); }
+  return out;
+}
+function ocrLabels(line){
+  let work=line; const out=[];
+  for(const [k,re] of OCR_LABELS){ re.lastIndex=0; let m;
+    while((m=re.exec(work))){ out.push({k,pos:m.index,end:m.index+m[0].length}); work=work.slice(0,m.index)+" ".repeat(m[0].length)+work.slice(m.index+m[0].length); re.lastIndex=m.index+m[0].length; } }
+  return out.sort((a,b)=>a.pos-b.pos);
+}
+function infoOffset(s){ const m=/(\d\d:\d\d)\s*\((\d\d:\d\d)/.exec(s||""); return m?locOffset(m[1],m[2]):null; }
+// Reads OUT/OFF/ON/IN (UTC) and the registration from recap text; keeps only times that fit this flight.
+function ocrParse(text,e){
+  const lines=text.toUpperCase().split(/\r?\n/).map(l=>l.replace(/\s+/g," ").replace(/\b0(?=UT\b|FF\b|N\b)/g,"O").trim()).filter(Boolean);
+  const raw={};
+  for(let i=0;i<lines.length;i++){
+    const labs=ocrLabels(lines[i]), tms=ocrTimes(lines[i]);
+    if(!labs.length) continue;
+    if(!tms.length && labs.length>=2 && lines[i+1] && !ocrLabels(lines[i+1]).length){ // header row, values on the next row
+      const nx=ocrTimes(lines[i+1]); if(nx.length>=labs.length){ labs.forEach((l,j)=>{ if(raw[l.k]==null) raw[l.k]=nx[j].min; }); continue; } }
+    labs.forEach((l,j)=>{ if(raw[l.k]!=null) return;
+      const lim=labs[j+1]?labs[j+1].pos:Infinity, t=tms.find(t=>t.pos>=l.end&&t.pos<lim);
+      if(t) raw[l.k]=t.min;
+      else if(labs.length===1&&lines[i+1]&&!ocrLabels(lines[i+1]).length){ const nx=ocrTimes(lines[i+1]); if(nx.length===1) raw[l.k]=nx[0].min; } });
+  }
+  // No labels: four times in a row that fit the flight.
+  if(Object.keys(raw).length<2){
+    const fit=lines.flatMap(ocrTimes).map(t=>t.min).filter(m=>{ const t=nearTs(m,e.dep); return t>=e.dep-3*36e5&&t<=e.arr+3*36e5; });
+    for(let i=0;i+4<=fit.length;i++){ const w=fit.slice(i,i+4), ts=[nearTs(w[0],e.dep)];
+      for(let j=1;j<4;j++){ let t=nearTs(w[j],ts[j-1]); if(t<ts[j-1]) t+=864e5; ts.push(t); }
+      if(ts.every((t,j)=>!j||t>ts[j-1]) && Math.abs((ts[3]-ts[0])-(e.arr-e.dep))<=2*36e5){ ["out","off","on","in"].forEach((k,j)=>raw[k]=w[j]); break; } }
+  }
+  // UTC or local time: keep whichever reading fits the flight.
+  const refs={out:e.dep,off:e.dep,on:e.arr,in:e.arr};
+  const offD=infoOffset(e.info&&e.info.Departure), offA=infoOffset(e.info&&e.info.Arrival);
+  const shift={out:offD,off:offD,on:offA,in:offA};
+  const fits=(k,m)=>Math.abs(nearTs(((m%1440)+1440)%1440,refs[k])-refs[k])<=4*36e5;
+  const score=s=>Object.entries(raw).filter(([k,m])=>fits(k,s?m-(shift[k]||0):m)).length;
+  const useLocal=offD!=null&&score(true)>score(false);
+  const res={};
+  for(const [k,m0] of Object.entries(raw)){ const m=useLocal?(((m0-(shift[k]||0))%1440)+1440)%1440:m0; if(fits(k,m)) res[k]=pad(Math.floor(m/60))+pad(m%60); }
+  const rg=/\bF\s?-?\s?[O0]\s?([A-Z0-9]{3})/.exec(text.toUpperCase());
+  if(rg){ const reg="F-O"+rg[1].replace(/0/g,"O"); if(fleetType(reg)) res.reg=reg; }
+  return { res, local:useLocal };
+}
+let ocrWorker=null;
+function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=()=>ko(new Error("script")); document.head.appendChild(s); }); }
+async function ocrRead(file,onStep){
+  if(!window.Tesseract){ onStep("Chargement du lecteur (première fois)…"); await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"); }
+  if(!ocrWorker){ onStep("Préparation…"); ocrWorker=await Tesseract.createWorker("eng"); }
+  onStep("Lecture de la photo…");
+  // Downscale big iPhone photos and convert to grey: faster and cleaner reading.
+  const url=URL.createObjectURL(file);
+  const img=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=url; });
+  const k=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight));
+  const c=document.createElement("canvas"); c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+  const g=c.getContext("2d"); g.filter="grayscale(1) contrast(1.4)"; g.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+  const { data }=await ocrWorker.recognize(c);
+  return data.text||"";
+}
+const ocrState={}; // per flight: { msg, filled:[keys], text }
 function renderLogTen(){
   const v=document.getElementById("view"); const fl=ltFlights();
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
-  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125), puis touche « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Prends le récap en photo, ou tape les heures réelles en UTC (ex. 0125), puis touche « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
   if(!fl.length) h+=`<div class="box"><p>Aucun vol sur les 45 derniers jours.</p></div>`;
   for(const e of fl){
     const d=ltData[e.id]||{}, ac=ltAircraft(e), reg=ac.reg, c=ltCheck(e);
@@ -1052,7 +1129,8 @@ function renderLogTen(){
         <select data-a="type" aria-label="Type">${Object.keys(FLEET).map(t=>`<option ${ac.type===t?"selected":""}>${t}</option>`).join("")}</select>
         <select data-a="reg" aria-label="Immatriculation">${(FLEET[ac.type]||[]).map(r=>`<option ${reg===r?"selected":""}>${r}</option>`).join("")}${FLEET[ac.type]&&FLEET[ac.type].includes(reg)?"":`<option selected>${esc(reg||"—")}</option>`}</select>
       </div>
-      <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
+      <div class="ltc-photo"><button class="btn ghost" data-act="photo">Photo du récap</button><input type="file" accept="image/*" data-a="photo" hidden><span class="ltc-ocr">${ocrState[e.id]?esc(ocrState[e.id].msg):""}</span></div>
+      <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" class="${ocrState[e.id]&&ocrState[e.id].filled.includes(k)?"ocr":""}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
       <div class="ltc-opts">
         <label class="chk"><input type="checkbox" data-o="pf" ${d.pf?"checked":""}> Pilot flying</label>
@@ -1071,7 +1149,7 @@ function renderLogTen(){
     card.querySelectorAll(".ltc-g input").forEach((inp,i,all)=>{
       inp.addEventListener("input",()=>{
         const digits=inp.value.replace(/\D/g,"").slice(0,4);
-        ltData[id]=Object.assign({},ltData[id],{[inp.dataset.k]:digits}); ltSave();
+        ltData[id]=Object.assign({},ltData[id],{[inp.dataset.k]:digits}); ltSave(); inp.classList.remove("ocr");
         inp.classList.toggle("bad", digits.length===4 && parseHHMM(digits)==null);
         refresh();
         if(digits.length===4 && parseHHMM(digits)!=null){ inp.value=fmtHHMM(digits); if(all[i+1]) all[i+1].focus(); }
@@ -1095,6 +1173,24 @@ function renderLogTen(){
     });
     selR.addEventListener("change",()=>{ ltData[id]=Object.assign({},ltData[id],{type:selT.value,reg:selR.value}); ltSave();
       card.querySelector(".ltc-h small").textContent=`${dmy(e.dep).slice(0,5)} · ${selR.value}${e.role?" · "+e.role:""}`; });
+    const fileIn=card.querySelector('[data-a="photo"]'), stat=card.querySelector(".ltc-ocr"), pbtn=card.querySelector('[data-act="photo"]');
+    pbtn.onclick=()=>fileIn.click();
+    fileIn.onchange=async()=>{
+      const file=fileIn.files&&fileIn.files[0]; fileIn.value=""; if(!file) return;
+      pbtn.disabled=true; stat.className="ltc-ocr";
+      try{
+        const text=await ocrRead(file,m=>stat.textContent=m);
+        const { res, local }=ocrParse(text,e), keys=LT_FIELDS.map(([k])=>k).filter(k=>res[k]);
+        const upd={}; keys.forEach(k=>upd[k]=res[k]);
+        if(res.reg){ upd.reg=res.reg; upd.type=fleetType(res.reg); }
+        ltData[id]=Object.assign({},ltData[id],upd); ltSave();
+        const n=keys.length;
+        ocrState[id]={ filled:keys, msg: n===4 ? "4 heures lues"+(local?" (converties en UTC)":"")+" : vérifie-les."
+          : n ? n+" heure"+(n>1?"s":"")+" lue"+(n>1?"s":"")+" : complète le reste."
+          : "Aucune heure reconnue : tape-les, ou reprends la photo plus nette." };
+        const y=scrollY; renderLogTen(); scrollTo(0,y);
+      }catch(err){ stat.textContent="Lecture impossible (connexion nécessaire la première fois)."; stat.className="ltc-ocr ltc-err"; pbtn.disabled=false; }
+    };
     card.querySelector('[data-act="import"]').onclick=()=>{
       const c=ltCheck(e); if(!c.ok) return;
       ltData[id]=Object.assign({},ltData[id],{sent:Date.now()}); ltSave();
