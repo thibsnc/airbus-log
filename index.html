@@ -951,7 +951,14 @@ async function copyText(text, fallbackId){
 const LT_FIELDS=[["out","Block out"],["off","Takeoff"],["on","Landing"],["in","Block in"]];
 let ltData=store.get("ltForm")||{};
 function ltSave(){ store.set("ltForm",ltData); }
-function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).sort((a,b)=>b.dep-a.dep); }
+// Practice flight so the form can be tried without a real flight (clearly marked TEST in LogTen).
+function ltTestFlight(){
+  const d=new Date(), base=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-1);
+  const dep=base+21*36e5, arr=base+23*36e5+5*6e4;
+  return { id:"test-flight", test:true, cat:"vol", code:"FLT", flight:"TEST1", from:"NOU", to:"NAN", reg:"FONEA", role:"F/O",
+    start:dep, end:arr, dep, arr, info:{}, crew:[{role:"CPT",people:[{code:"TST",name:"Test Commandant",flag:""}]}], notes:[], summary:"", desc:"" };
+}
+function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).concat([ltTestFlight()]).sort((a,b)=>b.dep-a.dep); }
 function parseHHMM(v){ const d=(v||"").replace(/\D/g,""); if(d.length<3) return null; const h=+d.slice(0,-2), m=+d.slice(-2); if(h>23||m>59) return null; return h*60+m; }
 function fmtHHMM(v){ const d=(v||"").replace(/\D/g,"").slice(0,4); return d.length>=3 ? d.slice(0,-2).padStart(2,"0")+":"+d.slice(-2) : d; }
 function nearTs(min,ref){ const d=new Date(ref); let best=null; for(const k of [-1,0,1]){ const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()+k,Math.floor(min/60),min%60); if(best===null||Math.abs(t-ref)<Math.abs(best-ref)) best=t; } return best; }
@@ -978,7 +985,7 @@ function ltURL(e,t){
     flight_flightDate:dmy(t.out), flight_flightNumber:e.flight, flight_from:icao(e.from), flight_to:icao(e.to),
     flight_scheduledDepartureTime:f(e.dep), flight_scheduledArrivalTime:f(e.arr),
     flight_actualDepartureTime:f(t.out), flight_takeoffTime:f(t.off), flight_landingTime:f(t.on), flight_actualArrivalTime:f(t.in),
-    flight_selectedAircraftID:reg, flight_totalTime:block, flight_remarks:"ACI LOG"+(e.role?" · fonction "+e.role:"") };
+    flight_selectedAircraftID:reg, flight_totalTime:block, flight_remarks:(e.test?"VOL DE TEST ACI LOG, à supprimer · ":"")+"ACI LOG"+(e.role?" · fonction "+e.role:"") };
   if(type) o.flight_selectedAircraftType=type;
   if(cap==="PIC") o.flight_pic=block;
   if(cap==="SIC") o.flight_sic=block;
@@ -1002,7 +1009,7 @@ function renderLogTen(){
     const d=ltData[e.id]||{}, reg=fmtReg(e.reg), c=ltCheck(e);
     const ph={out:hmUTC(e.dep),off:"",on:"",in:hmUTC(e.arr)};
     h+=`<div class="box ltc" data-id="${esc(e.id)}">
-      <div class="ltc-h"><b>${esc(e.flight)}</b><span class="r">${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(reg)}${e.role?" · "+esc(e.role):""}</small></div>
+      <div class="ltc-h">${e.test?'<span class="fc-role" style="color:var(--accent)">TEST</span>':""}<b>${esc(e.flight)}</b><span class="r">${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(reg)}${e.role?" · "+esc(e.role):""}</small></div>
       <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
       ${reg && !(lbState.types[reg]||"").trim() ? `<label class="ltc-type">Type ${esc(reg)} <input id="lt-type-${esc(e.id)}" data-reg="${esc(reg)}" placeholder="A20N" autocomplete="off"></label>`:""}
