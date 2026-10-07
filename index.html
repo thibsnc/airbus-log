@@ -181,6 +181,11 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-g input.bad{border-color:var(--accent)}
 .ltc-sum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .ltc-sum b{font-family:var(--f-mono);color:var(--fg)}
+.ltc-opts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.ltc-opts .chk{font-size:13.5px}
+.ltc-app{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600}
+.ltc-app select,.ltc-app input{font:inherit;font-weight:700;padding:6px 8px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+.ltc-app input{width:62px;text-transform:uppercase}
 .ltc-type{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600}
 .ltc-type input{font:inherit;font-weight:700;width:90px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);text-transform:uppercase}
 .ltc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -978,21 +983,48 @@ function ltCheck(e){
   if(block<=0||block>20*36e5) return { ok:false, t, msg:"Vérifie les heures : le block dépasse 20 h ou est négatif." };
   return { ok:true, t, block:Math.round(block/6e4), air:Math.round((t.on-t.off)/6e4) };
 }
+// "Sola Thibaut" -> "Thibaut SOLA" (self) or "Thibaut Sola" (others), as stored in the owner's LogTen crew list.
+function crewDisplay(rosterName, upperLast){
+  const p=(rosterName||"").trim().split(/\s+/); if(p.length<2) return rosterName||"";
+  const first=p[p.length-1], last=p.slice(0,-1).join(" ");
+  const cap=w=>w.replace(/(^|[\s-])(\p{L})/gu,(m,a,c)=>a+c.toUpperCase());
+  return cap(first.toLowerCase())+" "+(upperLast?last.toUpperCase():cap(last.toLowerCase()));
+}
+function crewByRole(e,re){ for(const g of e.crew){ if(re.test(g.role)){ const p=g.people.find(x=>x.code!==ME); if(p) return p.name; } } return ""; }
+function selfName(e){ for(const g of e.crew){ const p=g.people.find(x=>x.code===ME); if(p) return p.name; } return ""; }
+function isNightAt(code,ts){ const c=COORD[code]; return c ? sunElev(ts,c[0],c[1])<-6 : false; }
+const APP_TYPES=["ILS","RNP","RNAV","LOC","VOR","NDB","VISUAL"];
 function ltURL(e,t){
+  const d=ltData[e.id]||{};
   const reg=fmtReg(e.reg), type=(lbState.types[reg]||"").toUpperCase(), cap=capacity(e.role);
   const block=hmm(Math.round((t.in-t.out)/6e4)), f=ts=>dmy(ts)+" "+hmUTC(ts);
   const o={ entity_name:"Flight", flight_key:"airbuslog-"+e.flight+"-"+ymd(e.dep).replace(/-/g,"")+"-"+e.from,
     flight_flightDate:dmy(t.out), flight_flightNumber:e.flight, flight_from:icao(e.from), flight_to:icao(e.to),
     flight_scheduledDepartureTime:f(e.dep), flight_scheduledArrivalTime:f(e.arr),
     flight_actualDepartureTime:f(t.out), flight_takeoffTime:f(t.off), flight_landingTime:f(t.on), flight_actualArrivalTime:f(t.in),
-    flight_selectedAircraftID:reg, flight_totalTime:block, flight_remarks:(e.test?"VOL DE TEST ACI LOG, à supprimer · ":"")+"ACI LOG"+(e.role?" · fonction "+e.role:"") };
+    flight_selectedAircraftID:reg, flight_totalTime:block, flight_multiPilot:block, flight_crossCountry:block, flight_ifr:block,
+    flight_pilotFlyingCapacity:!!d.pf };
   if(type) o.flight_selectedAircraftType=type;
   if(cap==="PIC") o.flight_pic=block;
   if(cap==="SIC") o.flight_sic=block;
-  const pic=cap==="PIC"?"":crewName(e,/^CPT/), sic=cap==="SIC"?"":crewName(e,/^F\/O/);
-  if(pic) o.flight_selectedCrewPIC=pic;
-  if(sic) o.flight_selectedCrewSIC=sic;
-  const pkg={ metadata:{ application:"ACI LOG", version:"1.0", dateFormat:"dd/MM/yyyy", dateAndTimeFormat:"dd/MM/yyyy HH:mm", timesAreZulu:true }, entities:[o] };
+  // Crew: captain as PIC, first officer as SIC, the owner under his own name in his seat.
+  const me=selfName(e), cpt=crewByRole(e,/^(CPT|CDB|CMD)/), fo=crewByRole(e,/^(F\/O|OPL)/);
+  const pic = cap==="PIC" ? me : cpt, sic = cap==="SIC" ? me : fo;
+  if(pic) o.flight_selectedCrewPIC=crewDisplay(pic, pic===me);
+  if(sic) o.flight_selectedCrewSIC=crewDisplay(sic, sic===me);
+  // Takeoff and landing counted for the pilot flying, day or night from the sun at each airport.
+  if(d.pf){
+    if(isNightAt(e.from,t.off)) o.flight_nightTakeoffs=1; else o.flight_dayTakeoffs=1;
+    if(isNightAt(e.to,t.on)) o.flight_nightLandings=1; else o.flight_dayLandings=1;
+    if(d.auto) o.flight_autolands=1;
+  }
+  if(d.app) o.flight_selectedApproach1=`1;${d.app};${(d.rwy||"").toUpperCase()};${icao(e.to)}`;
+  // Duty: on duty at the first leg's check-in, off duty at the last leg's check-out.
+  const pos=dutyPos(e);
+  if(pos.first){ const ci=legTime(e.info.Checkin,e.dep)||shifted(legTime(e.info.Departure,e.dep),-90); o.flight_onDutyTime=f(ci?ci.ts:e.dep-90*6e4); }
+  if(pos.last){ const co=legTime(e.info.Checkout,e.arr)||shifted(legTime(e.info.Arrival,e.arr),30); o.flight_offDutyTime=f(co?co.ts:e.arr+30*6e4); }
+  if(e.test) o.flight_remarks="VOL DE TEST ACI LOG, à supprimer";
+  const pkg={ metadata:{ application:"ACI LOG", version:"1.1", dateFormat:"dd/MM/yyyy", dateAndTimeFormat:"dd/MM/yyyy HH:mm", timesAreZulu:true }, entities:[o] };
   return "logten://v2/addEntities?package="+encodeURIComponent(JSON.stringify(pkg));
 }
 function ltSummary(e){
@@ -1012,6 +1044,12 @@ function renderLogTen(){
       <div class="ltc-h">${e.test?'<span class="fc-role" style="color:var(--accent)">TEST</span>':""}<b>${esc(e.flight)}</b><span class="r">${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(reg)}${e.role?" · "+esc(e.role):""}</small></div>
       <div class="ltc-g">${LT_FIELDS.map(([k,l])=>`<label>${l}<input id="lt-${esc(e.id)}-${k}" data-k="${k}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="${ph[k]?ph[k]:"--:--"}" value="${esc(d[k]?fmtHHMM(d[k]):"")}"></label>`).join("")}</div>
       <div class="ltc-sum">${ltSummary(e)}</div>
+      <div class="ltc-opts">
+        <label class="chk"><input type="checkbox" data-o="pf" ${d.pf?"checked":""}> Pilot flying</label>
+        <label class="chk"><input type="checkbox" data-o="auto" ${d.auto?"checked":""} ${d.pf?"":"disabled"}> Autoland</label>
+        <label class="ltc-app">Approche <select data-o="app"><option value="">—</option>${APP_TYPES.map(a=>`<option ${d.app===a?"selected":""}>${a}</option>`).join("")}</select>
+          <input data-o="rwy" placeholder="Piste" maxlength="4" autocomplete="off" value="${esc(d.rwy||"")}"></label>
+      </div>
       ${reg && !(lbState.types[reg]||"").trim() ? `<label class="ltc-type">Type ${esc(reg)} <input id="lt-type-${esc(e.id)}" data-reg="${esc(reg)}" placeholder="A20N" autocomplete="off"></label>`:""}
       <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}</div>
     </div>`;
@@ -1031,6 +1069,12 @@ function renderLogTen(){
       });
       inp.addEventListener("blur",()=>{ inp.value=fmtHHMM(inp.value); });
       inp.addEventListener("focus",()=>{ inp.value=inp.value.replace(/\D/g,""); });
+    });
+    card.querySelectorAll(".ltc-opts [data-o]").forEach(el=>{
+      const save=()=>{ const v=el.type==="checkbox"?el.checked:el.value.trim().toUpperCase(); ltData[id]=Object.assign({},ltData[id],{[el.dataset.o]:v});
+        if(el.dataset.o==="pf"){ const au=card.querySelector('[data-o="auto"]'); au.disabled=!el.checked; if(!el.checked){ au.checked=false; ltData[id].auto=false; } }
+        ltSave(); };
+      el.addEventListener("change",save); if(el.tagName==="INPUT"&&el.type!=="checkbox") el.addEventListener("input",save);
     });
     const ty=card.querySelector(".ltc-type input");
     if(ty) ty.addEventListener("change",()=>{ lbState.types[ty.dataset.reg]=ty.value.trim().toUpperCase(); store.set("types",lbState.types); });
