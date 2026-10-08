@@ -250,6 +250,15 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-row .ltc-ok{grid-column:1/-1}
 @media (max-width:380px){.ltc-row .btn{font-size:12.5px;padding:10px 6px}.ltc-cam svg{display:none}}
 .ltc-cam{display:inline-flex;align-items:center;gap:6px}
+/* pull to refresh */
+.ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:30;width:40px;height:40px;margin-left:-20px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);color:var(--brand-text);box-shadow:0 6px 18px rgba(5,15,50,.3);transform:translateY(-70px) scale(.7);opacity:0;pointer-events:none;transition:transform .25s,opacity .25s}
+.ptr svg{width:21px;height:21px}
+.ptr.pull{transition:none}
+.ptr.ready{color:var(--accent)}
+.ptr.spin{transform:translateY(64px) scale(1)!important;opacity:1!important}
+.ptr.spin svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
 .ltc-ocr{font-size:12.5px;font-weight:600;color:var(--muted)}
 .ltc-ocr:empty{display:none}
 .ltc-g input.ocr{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
@@ -590,6 +599,7 @@ img{max-width:100%}
     <button class="btn ghost" id="integ-close">Fermer</button>
   </div>
 </div>
+<div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></div>
 <div class="toast" id="toast" hidden></div>
 <div class="keyscreen" id="whoscreen" hidden>
   <div class="in">
@@ -622,7 +632,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.9", date:"2026-10-09" };
+const APP_VERSION = { n:"1.10", date:"2026-10-09" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1983,6 +1993,41 @@ async function refreshAll(manual){
   btns.forEach(b=>b.disabled=false); busy=false;
   if(ok && manual) toast("Roster et météo à jour");
 }
+/* Pull down (from the top of the page, or on the top bar anywhere) to refresh roster, weather, the friend shown,
+   and reload the page when a newer app version is online. */
+async function pullRefresh(){
+  const jobs=[ state.view==="friends"&&typeof curFriend==="function"&&curFriend() ? refreshFriend(curFriend(),true) : refreshAll(true) ];
+  if(!IN_CLAUDE) jobs.push(fetch("./?v="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
+    const m=/const APP_VERSION = \{ n:"([\d.]+)"/.exec(t||""); return m&&m[1]!==APP_VERSION.n ? m[1] : null; }).catch(()=>null));
+  const out=await Promise.all([...jobs, new Promise(r=>setTimeout(r,700))]);
+  const newer=out[1]; if(typeof newer==="string"){ toast(`Nouvelle version ${newer} : rechargement…`); setTimeout(()=>location.reload(),600); }
+}
+(()=>{
+  const el=document.getElementById("ptr"), TH=72; let y0=null, x0=0, pull=0, active=false, running=false;
+  const blocked=()=>running||[...document.querySelectorAll(".sheet,.keyscreen")].some(x=>!x.hidden);
+  addEventListener("touchstart",e=>{
+    if(blocked()||e.touches.length!==1){ y0=null; return; }
+    const onTop=e.target.closest&&e.target.closest(".top");
+    if(scrollY>2&&!onTop){ y0=null; return; }
+    y0=e.touches[0].clientY; x0=e.touches[0].clientX; pull=0; active=false;
+  },{passive:true});
+  addEventListener("touchmove",e=>{
+    if(y0==null) return;
+    const dy=e.touches[0].clientY-y0, dx=e.touches[0].clientX-x0;
+    if(!active){ if(Math.abs(dx)>Math.abs(dy)||dy<6){ if(dy<0||Math.abs(dx)>12) y0=null; return; } active=true; el.classList.add("pull"); }
+    e.preventDefault();
+    pull=Math.min(130,dy*.55);
+    el.style.opacity=Math.min(1,pull/40); el.style.transform=`translateY(${pull-70+6}px) rotate(${pull*3}deg) scale(${.7+Math.min(.3,pull/TH*.3)})`;
+    el.classList.toggle("ready",pull>=TH);
+  },{passive:false});
+  addEventListener("touchend",async()=>{
+    if(y0==null||!active){ y0=null; return; }
+    y0=null; active=false; el.classList.remove("pull","ready"); el.style.transform=""; el.style.opacity="";
+    if(pull<TH) return;
+    running=true; el.classList.add("spin");
+    try{ await pullRefresh(); }finally{ el.classList.remove("spin"); running=false; }
+  });
+})();
 document.getElementById("b-refresh").onclick=()=>{ if(state.view==="friends"&&curFriend()) refreshFriend(curFriend(),true); else refreshAll(true); };
 document.getElementById("s-refresh").onclick=()=>refreshAll(true);
 document.getElementById("ics-file").addEventListener("change",async e=>{
