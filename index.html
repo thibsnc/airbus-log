@@ -622,7 +622,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.8", date:"2026-10-09" };
+const APP_VERSION = { n:"1.9", date:"2026-10-09" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1686,15 +1686,16 @@ document.getElementById("whoform").addEventListener("submit",e=>{
   store.set("who",{first,last}); document.getElementById("whoscreen").hidden=true; pingUsage(true); toast("Merci "+first+" !");
 });
 // Owner side: admin code derived from the access key (never the key itself), compared by the Netlify function.
+// Derived from the owner's own secret: the access key, or his roster link when the app runs in link mode.
 async function adminCode(){
-  if(!apiKey) return null;
-  const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("aci-log-admin:"+apiKey));
+  const secret=apiKey||rosterUrl; if(!secret) return null;
+  const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("aci-log-admin:"+secret));
   return [...new Uint8Array(h)].slice(0,12).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 function agoTxt(iso){ const m=Math.round((Date.now()-new Date(iso).getTime())/6e4); return m<2?"à l'instant":m<60?`il y a ${m} min`:m<1440?`il y a ${Math.round(m/60)} h`:`il y a ${Math.round(m/1440)} j`; }
 async function renderUsers(){
   const wrap=document.getElementById("users-wrap"), el=document.getElementById("users"); if(!wrap) return;
-  if(ON_SHARED||(!apiKey&&!IN_CLAUDE)){ wrap.hidden=true; return; }
+  if(!isOwner()){ wrap.hidden=true; return; }
   wrap.hidden=false;
   if(IN_CLAUDE){ el.innerHTML=`<p class="note">Visible dans ton app sur iPhone.</p>`; return; }
   const code=await adminCode();
@@ -1791,7 +1792,9 @@ async function fetchLink(url){
 /* ---------- friends (owner's app only) ----------
    A friend gives the owner their own Aircalin iCal link; it is kept only on this device (localStorage)
    and read through the same Netlify relay as the shared version. Never sent anywhere else. */
-const isOwner=()=>!ON_SHARED && (!!apiKey || IN_CLAUDE);
+// The owner's app is anything not served from the shared Netlify site (GitHub Pages or the Claude preview),
+// whether it was opened with the access key or with his roster link.
+const isOwner=()=>!ON_SHARED && (!!apiKey || !!rosterUrl || IN_CLAUDE);
 let friends=(store.get("friends")||[]).filter(f=>f&&f.id&&f.url);
 const fr={ sel:store.get("friendSel")||null, adding:false, busy:false, err:"", armed:null };
 const frEvents=new Map();
