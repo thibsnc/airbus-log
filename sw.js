@@ -1,5 +1,5 @@
 // ACI LOG service worker: app shell available offline, always fresh when online.
-const CACHE = "aci-log-v2";
+const CACHE = "aci-log-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/apple-touch-icon.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -31,9 +31,10 @@ self.addEventListener("fetch", (e) => {
     }
     return;
   }
-  // App files: network first (updates show up right away), cache as fallback offline.
+  // App files: network first, revalidated with the server every time (GitHub Pages lets browsers keep
+  // pages 10 min otherwise, so a new version could wait), cache as fallback offline.
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: "no-cache" })
       .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
       .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
   );

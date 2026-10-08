@@ -632,7 +632,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.10", date:"2026-10-09" };
+const APP_VERSION = { n:"1.11", date:"2026-10-09" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1995,12 +1995,23 @@ async function refreshAll(manual){
 }
 /* Pull down (from the top of the page, or on the top bar anywhere) to refresh roster, weather, the friend shown,
    and reload the page when a newer app version is online. */
+// Is a newer app version online? Reads the published page itself, bypassing every cache.
+async function onlineVersion(){
+  if(IN_CLAUDE) return null;
+  try{ const r=await fetch("./?v="+Date.now(),{cache:"no-store"}); if(!r.ok) return null;
+    const m=/const APP_VERSION = \{ n:"([\d.]+)"/.exec(await r.text()); return m&&m[1]!==APP_VERSION.n ? m[1] : null; }catch(_){ return null; }
+}
+function reloadFor(v){ toast(`Nouvelle version ${v} : rechargement…`); setTimeout(()=>location.reload(),700); }
+// Checked at start and each time the app comes back on screen (iOS keeps a home-screen app in memory,
+// so without this it could show an old version for days). One automatic reload per version.
+async function checkUpdate(){
+  const v=await onlineVersion(); if(!v||store.get("reloadedFor")===v) return;
+  store.set("reloadedFor",v); reloadFor(v);
+}
 async function pullRefresh(){
-  const jobs=[ state.view==="friends"&&typeof curFriend==="function"&&curFriend() ? refreshFriend(curFriend(),true) : refreshAll(true) ];
-  if(!IN_CLAUDE) jobs.push(fetch("./?v="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
-    const m=/const APP_VERSION = \{ n:"([\d.]+)"/.exec(t||""); return m&&m[1]!==APP_VERSION.n ? m[1] : null; }).catch(()=>null));
+  const jobs=[ state.view==="friends"&&typeof curFriend==="function"&&curFriend() ? refreshFriend(curFriend(),true) : refreshAll(true), onlineVersion() ];
   const out=await Promise.all([...jobs, new Promise(r=>setTimeout(r,700))]);
-  const newer=out[1]; if(typeof newer==="string"){ toast(`Nouvelle version ${newer} : rechargement…`); setTimeout(()=>location.reload(),600); }
+  if(typeof out[1]==="string") reloadFor(out[1]);
 }
 (()=>{
   const el=document.getElementById("ptr"), TH=72; let y0=null, x0=0, pull=0, active=false, running=false;
@@ -2234,7 +2245,8 @@ if(IN_CLAUDE){
 } else {
   if(apiKey || rosterUrl) refreshAll(false).then(()=>{ if(needWho()) showWho(); else pingUsage(false); }); else showKey();
   setInterval(()=>{ if(document.visibilityState==="visible") refreshAll(false); },10*60*1000);
-  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ if(Date.now()-lastRefresh>3*60*1000) refreshAll(false); pingUsage(false); } });
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ if(Date.now()-lastRefresh>3*60*1000) refreshAll(false); pingUsage(false); checkUpdate(); } });
+  setTimeout(checkUpdate,2500);
   if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }
 })();
