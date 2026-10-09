@@ -379,7 +379,9 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .panel .dhead{margin-top:0}
 
 /* ---- tab bar ---- */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;background:var(--surface);border-top:1px solid var(--line);padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;background:var(--surface);border-top:1px solid var(--line);padding-bottom:var(--tabpad,max(env(safe-area-inset-bottom,0px),8px))}
+/* The bar's colour runs on to the physical bottom of the screen, whatever iOS does with the viewport. */
+.tabs::after{content:"";position:absolute;left:0;right:0;top:100%;height:160px;background:var(--surface);pointer-events:none}
 .tabs .in{max-width:760px;margin:0 auto;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
 .tab[aria-pressed="true"]{color:var(--brand-text)}
 .tab{border:0;background:transparent;display:grid;justify-items:center;gap:2px;padding:8px 0 7px;font-size:10.5px;font-weight:600;color:var(--muted);cursor:pointer;min-width:0;white-space:nowrap}
@@ -632,7 +634,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.12", date:"2026-10-09" };
+const APP_VERSION = { n:"1.13", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1993,6 +1995,14 @@ async function refreshAll(manual){
   btns.forEach(b=>b.disabled=false); busy=false;
   if(ok && manual) toast("Roster et météo à jour");
 }
+/* Home-screen app on recent iOS: the page may stop above the home-indicator zone. Then iOS already keeps
+   that zone free, so the bar must not add the safe-area padding a second time (it showed as a white band). */
+function fitTabBar(){
+  const portrait=innerHeight>=innerWidth, full=portrait?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
+  const gap=full-innerHeight, standalone=navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+  document.documentElement.style.setProperty("--tabpad", standalone&&gap>=20 ? "6px" : "");
+}
+fitTabBar(); addEventListener("resize",fitTabBar); addEventListener("orientationchange",()=>setTimeout(fitTabBar,300));
 /* Pull down (from the top of the page, or on the top bar anywhere) to refresh roster, weather, the friend shown,
    and reload the page when a newer app version is online. */
 // Is a newer app version online? Reads the published page itself, bypassing every cache.
