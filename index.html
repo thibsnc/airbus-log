@@ -259,6 +259,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .fl-gh{display:flex;align-items:baseline;gap:8px;padding:9px 12px 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
 .fl-gh b{font-family:var(--f-mono);font-size:14px;color:var(--fg)}
 .fl-gh span{margin-left:auto;font-weight:600}
+.fl-gh .fl-role{font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:1px 7px;border-radius:999px;color:var(--brand-text);background:color-mix(in srgb,var(--sky) 18%,var(--surface))}
 .fl-row{width:100%;border:0;border-top:1px solid var(--line);background:transparent;font:inherit;color:var(--fg);display:grid;grid-template-columns:auto minmax(0,1fr) auto auto 12px;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;text-align:left}
 .fl-row:first-of-type{border-top:0}
 .fl-row .rt{font-weight:800;font-size:15px;color:var(--brand-text);white-space:nowrap}
@@ -675,7 +676,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.15", date:"2026-10-10" };
+const APP_VERSION = { n:"1.16", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -983,7 +984,7 @@ function summaryHTML(){
   }
   const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
-  const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol");
+  const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&isOperated(e));
   const tft=fl.reduce((n,e)=>n+blockOf(e).min,0);
   // Night: flown so far this month / planned for the whole month (flown + still to fly).
   const nowT=Date.now(), nightOf=e=>{ const b=blockOf(e); return nightMinutes(e.from,e.to,b.dep,b.arr)||0; };
@@ -2037,10 +2038,12 @@ async function refreshAll(manual){
   if(ok && manual) toast("Roster et météo à jour");
 }
 /* ---------- flights of the month (tap the Vols tile) ---------- */
+// A flight counts when the crew member works it (OBT, F/O, CPT…): never a positioning (MEP / deadhead) leg.
+function isOperated(e){ return e.cat==="vol" && !/^(MEP|DH|DHD|DHT|PAX|PASS|EXTRA)/i.test(e.role||""); }
 function monthFlights(){
   const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
-  return { m, list:state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol").sort((a,b)=>a.dep-b.dep) };
+  return { m, list:state.events.filter(e=>e.start>=ms&&e.start<me&&isOperated(e)).sort((a,b)=>a.dep-b.dep) };
 }
 function miniCard(e){
   // Same card as the list, shrunk: departure/arrival only, captain and first officer on one line.
@@ -2056,7 +2059,7 @@ function openFlights(){
   const L=document.getElementById("fl-list");
   L.innerHTML=groups.length?groups.map(g=>{
     const f=g.legs[0], route=[f.from,...g.legs.map(x=>x.to)].join(" → "), tot=g.legs.reduce((n,x)=>n+blockOf(x).min,0);
-    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(f.flight)}</b>${esc(longDate(dayKey(f.dep)))}<span>${esc(route)} · ${dur2(tot*6e4)}</span></div>`+
+    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(f.flight)}</b>${f.role?`<em class="fl-role">${esc(f.role)}</em>`:""}${esc(longDate(dayKey(f.dep)).replace(/\s+\S+$/,""))}<span>${esc(route)} · ${dur2(tot*6e4)}</span></div>`+
       g.legs.map(e=>{ const st=e.dep<=now&&e.arr>now?"now":e.arr<=now?"done":""; const b=blockOf(e);
         return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}</span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div>`;
   }).join(""):`<p class="note">Aucun vol ce mois-ci.</p>`;
