@@ -256,15 +256,22 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .stat.tap:active{transform:scale(.97)}
 .fl-list{display:grid;gap:10px;margin-bottom:12px}
 .fl-grp{border-radius:14px;background:var(--surface-2);overflow:hidden}
-.fl-gh{display:flex;align-items:baseline;gap:8px;padding:9px 12px 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
-.fl-gh b{font-family:var(--f-mono);font-size:14px;color:var(--fg)}
-.fl-gh span{margin-left:auto;font-weight:600}
+.fl-day{width:100%;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;display:grid;gap:3px;padding:11px 12px 10px}
+.fl-gh{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.fl-gh .st{width:9px;height:9px;border-radius:50%;background:var(--violet);flex:none}
+.fl-gh .st.done{background:var(--green)} .fl-gh .st.now{background:var(--accent)}
+.fl-gh .chev{margin-left:2px;transition:transform .2s}
+.fl-day[aria-expanded="true"] .fl-gh .chev{transform:rotate(90deg)}
+.fl-legs{border-top:1px solid var(--line)}
+.fl-gh b{font-size:14px;color:var(--fg)}
+.fl-gh .cnt{margin-left:auto;font-weight:600}
 .fl-gh .fl-role{font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:1px 7px;border-radius:999px;color:var(--brand-text);background:color-mix(in srgb,var(--sky) 18%,var(--surface))}
 .fl-row{width:100%;border:0;border-top:1px solid var(--line);background:transparent;font:inherit;color:var(--fg);display:grid;grid-template-columns:auto minmax(0,1fr) auto auto 12px;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;text-align:left}
 .fl-row:first-of-type{border-top:0}
 .fl-row .rt{font-weight:800;font-size:15px;color:var(--brand-text);white-space:nowrap}
 .fl-row .rt small{display:block;font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--muted);margin-top:1px}
-.fl-route{padding:0 12px 6px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.fl-route{padding-left:17px;font-size:15px;font-weight:800;color:var(--brand-text)}
+.fl-route small{display:block;font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--muted);margin-top:1px}
 .fl-row .tm{font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fl-row .du{font-family:var(--f-mono);font-size:13px;font-weight:600}
 .fl-row .st{width:9px;height:9px;border-radius:50%;background:var(--violet)}
@@ -678,7 +685,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.17", date:"2026-10-10" };
+const APP_VERSION = { n:"1.18", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -2068,10 +2075,15 @@ function openFlights(){
   L.innerHTML=groups.length?groups.map(g=>{
     const f=g.legs[0], route=[f.from,...g.legs.map(x=>x.to)].join(" → "), tot=g.legs.reduce((n,x)=>n+blockOf(x).min,0);
     const nums=[...new Set(g.legs.map(x=>x.flight))].join(" / "), roles=[...new Set(g.legs.map(x=>x.role).filter(Boolean))].join(" · ");
-    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(longDate(dayKey(f.dep)).replace(/\s+\S+$/,""))}</b>${roles?`<em class="fl-role">${esc(roles)}</em>`:""}<span>${esc(nums)} · ${dur2(tot*6e4)}</span></div><div class="fl-route">${esc(route)}</div>`+
+    const done=g.legs.every(x=>x.arr<=now), live=g.legs.some(x=>x.dep<=now&&x.arr>now);
+    return `<div class="fl-grp"><button class="fl-day" aria-expanded="false"><span class="fl-gh"><span class="st ${live?"now":done?"done":""}"></span><b>${esc(longDate(dayKey(f.dep)).replace(/\s+\S+$/,""))}</b>${roles?`<em class="fl-role">${esc(roles)}</em>`:""}<span class="cnt">${g.legs.length} étape${g.legs.length>1?"s":""} · ${dur2(tot*6e4)}</span>${CHEV}</span><span class="fl-route">${esc(route)}<small>${esc(nums)}</small></span></button><div class="fl-legs" hidden>`+
       g.legs.map(e=>{ const st=e.dep<=now&&e.arr>now?"now":e.arr<=now?"done":""; const b=blockOf(e);
-        return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}<small>${esc(e.flight)}</small></span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div>`;
+        return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}<small>${esc(e.flight)}</small></span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div></div>`;
   }).join(""):`<p class="note">Aucun vol ce mois-ci.</p>`;
+  L.querySelectorAll(".fl-day").forEach(btn=>btn.onclick=()=>{
+    const legs=btn.nextElementSibling, open=btn.getAttribute("aria-expanded")==="true";
+    btn.setAttribute("aria-expanded",String(!open)); legs.hidden=open;
+  });
   L.querySelectorAll(".fl-row").forEach(btn=>btn.onclick=()=>{
     const box=btn.nextElementSibling, open=btn.getAttribute("aria-expanded")==="true";
     if(!open&&!box.innerHTML){ const e=list.find(x=>x.id===btn.dataset.id); if(e) box.innerHTML=miniCard(e); }
