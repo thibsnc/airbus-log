@@ -250,6 +250,39 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-row .ltc-ok{grid-column:1/-1}
 @media (max-width:380px){.ltc-row .btn{font-size:12.5px;padding:10px 6px}.ltc-cam svg{display:none}}
 .ltc-cam{display:inline-flex;align-items:center;gap:6px}
+/* flights of the month (from the Vols tile) */
+.stat.tap{cursor:pointer;position:relative}
+.stat.tap::after{content:"›";position:absolute;right:5px;top:3px;font-size:12px;font-weight:700;color:var(--muted);opacity:.7}
+.stat.tap:active{transform:scale(.97)}
+.fl-list{display:grid;gap:10px;margin-bottom:12px}
+.fl-grp{border-radius:14px;background:var(--surface-2);overflow:hidden}
+.fl-gh{display:flex;align-items:baseline;gap:8px;padding:9px 12px 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.fl-gh b{font-family:var(--f-mono);font-size:14px;color:var(--fg)}
+.fl-gh span{margin-left:auto;font-weight:600}
+.fl-row{width:100%;border:0;border-top:1px solid var(--line);background:transparent;font:inherit;color:var(--fg);display:grid;grid-template-columns:auto minmax(0,1fr) auto auto 12px;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;text-align:left}
+.fl-row:first-of-type{border-top:0}
+.fl-row .rt{font-weight:800;font-size:15px;color:var(--brand-text);white-space:nowrap}
+.fl-row .tm{font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl-row .du{font-family:var(--f-mono);font-size:13px;font-weight:600}
+.fl-row .st{width:9px;height:9px;border-radius:50%;background:var(--violet)}
+.fl-row .st.done{background:var(--green)}
+.fl-row .st.now{background:var(--accent)}
+.fl-row .chev{transition:transform .2s}
+.fl-row[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.fl-mini{padding:0 8px 10px}
+.fl-mini .fcard{border-radius:12px;border:1px solid var(--line);border-left:4px solid var(--cat);background:var(--surface);padding:9px 10px 8px;gap:7px}
+.fl-mini .fc-no{font-size:14px}
+.fl-mini .fc-reg{font-size:11.5px}
+.fl-mini .fc-ap b{font-size:22px}
+.fl-mini .fc-ap small{font-size:10.5px;margin-top:2px}
+.fl-mini .fc-t{padding:5px 6px 6px}
+.fl-mini .fc-t .v{font-size:14px}
+.fl-mini .fc-t .z{font-size:9.5px}
+.fl-mini .fc-t:not(.key){display:none}
+.fl-mini .fc-times{grid-auto-columns:minmax(0,1fr)}
+.fl-mini .fc-foot{font-size:12px;padding-top:7px}
+.fl-mini .fc-crew,.fl-mini .fc-warn{display:none}
+.fl-mini .fc-crewline{font-size:12px;font-weight:600;color:var(--brand-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* pull to refresh */
 .ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:30;width:40px;height:40px;margin-left:-20px;border-radius:50%;display:grid;place-items:center;
   background:var(--surface);color:var(--brand-text);box-shadow:0 6px 18px rgba(5,15,50,.3);transform:translateY(-70px) scale(.7);opacity:0;pointer-events:none;transition:transform .25s,opacity .25s}
@@ -582,6 +615,14 @@ img{max-width:100%}
     <button class="btn ghost" id="s-close">Fermer</button>
   </div>
 </div>
+<div class="sheet flsheet" id="flsheet" hidden role="dialog" aria-label="Vols du mois">
+  <div class="in">
+    <div class="grab"></div>
+    <h3 id="fl-title">Vols du mois</h3>
+    <div id="fl-list" class="fl-list"></div>
+    <button class="btn ghost" id="fl-close">Fermer</button>
+  </div>
+</div>
 <div class="sheet wxsheet" id="wxsheet" hidden role="dialog" aria-label="METAR">
   <div class="in">
     <div class="grab"></div>
@@ -634,7 +675,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.14", date:"2026-10-10" };
+const APP_VERSION = { n:"1.15", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -947,7 +988,7 @@ function summaryHTML(){
   // Night: flown so far this month / planned for the whole month (flown + still to fly).
   const nowT=Date.now(), nightOf=e=>{ const b=blockOf(e); return nightMinutes(e.from,e.to,b.dep,b.arr)||0; };
   const nightMin=fl.filter(e=>e.arr<=nowT).reduce((n,e)=>n+nightOf(e),0), nightPlan=fl.reduce((n,e)=>n+nightOf(e),0);
-  h+=`<div class="stats"><div class="stat night"><div class="k" title="${MONTHS[m-1]}">Vols</div><div class="v" title="Étapes (legs) / vols (numéros de vol par jour)">${fl.length}<span class="of">/${new Set(fl.map(e=>e.flight+"|"+dayKey(e.dep))).size}</span></div><div class="sub">étapes / vols</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat night"><div class="k">Nuit</div><div class="v" title="Réalisées / prévues ce mois-ci">${Math.floor(nightMin/60)}h${pad(nightMin%60)}<span class="of">/${Math.floor(nightPlan/60)}h${pad(nightPlan%60)}</span></div><div class="sub">réalisées / prévues</div></div></div>${integBadge()}`;
+  h+=`<div class="stats"><div class="stat night tap" id="fl-open" role="button" tabindex="0" aria-label="Voir les vols de ${MONTHS[m-1]}"><div class="k" title="${MONTHS[m-1]}">Vols</div><div class="v" title="Étapes (legs) / vols (numéros de vol par jour)">${fl.length}<span class="of">/${new Set(fl.map(e=>e.flight+"|"+dayKey(e.dep))).size}</span></div><div class="sub">étapes / vols</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat night"><div class="k">Nuit</div><div class="v" title="Réalisées / prévues ce mois-ci">${Math.floor(nightMin/60)}h${pad(nightMin%60)}<span class="of">/${Math.floor(nightPlan/60)}h${pad(nightPlan%60)}</span></div><div class="sub">réalisées / prévues</div></div></div>${integBadge()}`;
   return h;
 }
 
@@ -1747,7 +1788,7 @@ async function renderVersion(){
   }catch(_){ row=`<b>—</b><small>impossible à vérifier ici</small>`; }
   el.innerHTML=mine+`<div><span>Version des collègues</span>${row}</div>`;
 }
-const closeSheet=()=>{ sheet.hidden=true; scrim.hidden=true; const w=document.getElementById("wxsheet"); if(w) w.hidden=true; const g=document.getElementById("integsheet"); if(g) g.hidden=true; };
+const closeSheet=()=>{ sheet.hidden=true; scrim.hidden=true; const w=document.getElementById("wxsheet"); if(w) w.hidden=true; const g=document.getElementById("integsheet"); if(g) g.hidden=true; const fs=document.getElementById("flsheet"); if(fs) fs.hidden=true; };
 document.getElementById("integ-close").onclick=closeSheet;
 document.addEventListener("click",ev=>{ if(ev.target.closest&&ev.target.closest("#integ-open")) openInteg(); });
 document.getElementById("t-set").onclick=openSheet;
@@ -1995,6 +2036,40 @@ async function refreshAll(manual){
   btns.forEach(b=>b.disabled=false); busy=false;
   if(ok && manual) toast("Roster et météo à jour");
 }
+/* ---------- flights of the month (tap the Vols tile) ---------- */
+function monthFlights(){
+  const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
+  const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
+  return { m, list:state.events.filter(e=>e.start>=ms&&e.start<me&&e.cat==="vol").sort((a,b)=>a.dep-b.dep) };
+}
+function miniCard(e){
+  // Same card as the list, shrunk: departure/arrival only, captain and first officer on one line.
+  const d=document.createElement("div"); d.innerHTML=flightCard(e);
+  const crew=[]; for(const [re,lbl] of COCKPIT){ for(const g of e.crew){ if(re.test(g.role)) g.people.forEach(p=>crew.push(`${lbl==="Captain"?"CDB":lbl==="First Officer"?"OPL":lbl} ${lastName(p.name)}`)); } }
+  const art=d.querySelector(".fcard"); if(crew.length){ const c=document.createElement("div"); c.className="fc-crewline"; c.textContent=crew.join(" · "); art.appendChild(c); }
+  return d.innerHTML;
+}
+function openFlights(){
+  const { m, list }=monthFlights(), now=Date.now();
+  const groups=[]; for(const e of list){ const key=e.flight+"|"+dayKey(e.dep); let g=groups.find(x=>x.key===key); if(!g){ g={key,legs:[]}; groups.push(g); } g.legs.push(e); }
+  document.getElementById("fl-title").textContent=`Vols ${/^[aeiouyâ]/i.test(MONTHS[m-1])?"d'":"de "}${MONTHS[m-1]} · ${list.length} étape${list.length>1?"s":""} / ${groups.length} vol${groups.length>1?"s":""}`;
+  const L=document.getElementById("fl-list");
+  L.innerHTML=groups.length?groups.map(g=>{
+    const f=g.legs[0], route=[f.from,...g.legs.map(x=>x.to)].join(" → "), tot=g.legs.reduce((n,x)=>n+blockOf(x).min,0);
+    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(f.flight)}</b>${esc(longDate(dayKey(f.dep)))}<span>${esc(route)} · ${dur2(tot*6e4)}</span></div>`+
+      g.legs.map(e=>{ const st=e.dep<=now&&e.arr>now?"now":e.arr<=now?"done":""; const b=blockOf(e);
+        return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}</span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div>`;
+  }).join(""):`<p class="note">Aucun vol ce mois-ci.</p>`;
+  L.querySelectorAll(".fl-row").forEach(btn=>btn.onclick=()=>{
+    const box=btn.nextElementSibling, open=btn.getAttribute("aria-expanded")==="true";
+    if(!open&&!box.innerHTML){ const e=list.find(x=>x.id===btn.dataset.id); if(e) box.innerHTML=miniCard(e); }
+    btn.setAttribute("aria-expanded",String(!open)); box.hidden=open;
+  });
+  document.getElementById("flsheet").hidden=false; document.getElementById("scrim").hidden=false;
+}
+document.addEventListener("click",ev=>{ if(ev.target.closest&&ev.target.closest("#fl-open")) openFlights(); });
+document.addEventListener("keydown",ev=>{ if((ev.key==="Enter"||ev.key===" ")&&document.activeElement&&document.activeElement.id==="fl-open"){ ev.preventDefault(); openFlights(); } });
+document.getElementById("fl-close").onclick=()=>{ document.getElementById("flsheet").hidden=true; document.getElementById("scrim").hidden=true; };
 /* Home-screen app on recent iOS: the page may stop above the home-indicator zone. Then iOS already keeps
    that zone free, so the bar must not add the safe-area padding a second time (it showed as a white band). */
 function fitTabBar(){
