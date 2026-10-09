@@ -263,6 +263,8 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .fl-row{width:100%;border:0;border-top:1px solid var(--line);background:transparent;font:inherit;color:var(--fg);display:grid;grid-template-columns:auto minmax(0,1fr) auto auto 12px;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;text-align:left}
 .fl-row:first-of-type{border-top:0}
 .fl-row .rt{font-weight:800;font-size:15px;color:var(--brand-text);white-space:nowrap}
+.fl-row .rt small{display:block;font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--muted);margin-top:1px}
+.fl-route{padding:0 12px 6px;font-size:12.5px;font-weight:700;color:var(--muted)}
 .fl-row .tm{font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fl-row .du{font-family:var(--f-mono);font-size:13px;font-weight:600}
 .fl-row .st{width:9px;height:9px;border-radius:50%;background:var(--violet)}
@@ -676,7 +678,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.16", date:"2026-10-10" };
+const APP_VERSION = { n:"1.17", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -989,7 +991,7 @@ function summaryHTML(){
   // Night: flown so far this month / planned for the whole month (flown + still to fly).
   const nowT=Date.now(), nightOf=e=>{ const b=blockOf(e); return nightMinutes(e.from,e.to,b.dep,b.arr)||0; };
   const nightMin=fl.filter(e=>e.arr<=nowT).reduce((n,e)=>n+nightOf(e),0), nightPlan=fl.reduce((n,e)=>n+nightOf(e),0);
-  h+=`<div class="stats"><div class="stat night tap" id="fl-open" role="button" tabindex="0" aria-label="Voir les vols de ${MONTHS[m-1]}"><div class="k" title="${MONTHS[m-1]}">Vols</div><div class="v" title="Étapes (legs) / vols (numéros de vol par jour)">${fl.length}<span class="of">/${new Set(fl.map(e=>e.flight+"|"+dayKey(e.dep))).size}</span></div><div class="sub">étapes / vols</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat night"><div class="k">Nuit</div><div class="v" title="Réalisées / prévues ce mois-ci">${Math.floor(nightMin/60)}h${pad(nightMin%60)}<span class="of">/${Math.floor(nightPlan/60)}h${pad(nightPlan%60)}</span></div><div class="sub">réalisées / prévues</div></div></div>${integBadge()}`;
+  h+=`<div class="stats"><div class="stat night tap" id="fl-open" role="button" tabindex="0" aria-label="Voir les vols de ${MONTHS[m-1]}"><div class="k" title="${MONTHS[m-1]}">Vols</div><div class="v" title="Étapes (legs) / vols (journées de vol, aller et retour compris)">${fl.length}<span class="of">/${dutiesOf(fl).length}</span></div><div class="sub">étapes / vols</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat night"><div class="k">Nuit</div><div class="v" title="Réalisées / prévues ce mois-ci">${Math.floor(nightMin/60)}h${pad(nightMin%60)}<span class="of">/${Math.floor(nightPlan/60)}h${pad(nightPlan%60)}</span></div><div class="sub">réalisées / prévues</div></div></div>${integBadge()}`;
   return h;
 }
 
@@ -2039,6 +2041,12 @@ async function refreshAll(manual){
 }
 /* ---------- flights of the month (tap the Vols tile) ---------- */
 // A flight counts when the crew member works it (OBT, F/O, CPT…): never a positioning (MEP / deadhead) leg.
+// Legs chained with less than 6 h on the ground make one duty (same rule as check-in / check-out).
+function dutiesOf(legs){
+  const out=[]; for(const e of [...legs].sort((a,b)=>a.dep-b.dep)){ const g=out[out.length-1];
+    if(g && e.dep-g[g.length-1].arr<6*36e5) g.push(e); else out.push([e]); }
+  return out;
+}
 function isOperated(e){ return e.cat==="vol" && !/^(MEP|DH|DHD|DHT|PAX|PASS|EXTRA)/i.test(e.role||""); }
 function monthFlights(){
   const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
@@ -2054,14 +2062,15 @@ function miniCard(e){
 }
 function openFlights(){
   const { m, list }=monthFlights(), now=Date.now();
-  const groups=[]; for(const e of list){ const key=e.flight+"|"+dayKey(e.dep); let g=groups.find(x=>x.key===key); if(!g){ g={key,legs:[]}; groups.push(g); } g.legs.push(e); }
+  const groups=dutiesOf(list).map(legs=>({legs}));
   document.getElementById("fl-title").textContent=`Vols ${/^[aeiouyâ]/i.test(MONTHS[m-1])?"d'":"de "}${MONTHS[m-1]} · ${list.length} étape${list.length>1?"s":""} / ${groups.length} vol${groups.length>1?"s":""}`;
   const L=document.getElementById("fl-list");
   L.innerHTML=groups.length?groups.map(g=>{
     const f=g.legs[0], route=[f.from,...g.legs.map(x=>x.to)].join(" → "), tot=g.legs.reduce((n,x)=>n+blockOf(x).min,0);
-    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(f.flight)}</b>${f.role?`<em class="fl-role">${esc(f.role)}</em>`:""}${esc(longDate(dayKey(f.dep)).replace(/\s+\S+$/,""))}<span>${esc(route)} · ${dur2(tot*6e4)}</span></div>`+
+    const nums=[...new Set(g.legs.map(x=>x.flight))].join(" / "), roles=[...new Set(g.legs.map(x=>x.role).filter(Boolean))].join(" · ");
+    return `<div class="fl-grp"><div class="fl-gh"><b>${esc(longDate(dayKey(f.dep)).replace(/\s+\S+$/,""))}</b>${roles?`<em class="fl-role">${esc(roles)}</em>`:""}<span>${esc(nums)} · ${dur2(tot*6e4)}</span></div><div class="fl-route">${esc(route)}</div>`+
       g.legs.map(e=>{ const st=e.dep<=now&&e.arr>now?"now":e.arr<=now?"done":""; const b=blockOf(e);
-        return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}</span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div>`;
+        return `<button class="fl-row" data-id="${esc(e.id)}" aria-expanded="false"><span class="st ${st}" title="${st==="done"?"Effectué":st==="now"?"En vol":"Prévu"}"></span><span class="rt">${esc(e.from)} → ${esc(e.to)}<small>${esc(e.flight)}</small></span><span class="tm">${hm(e.dep)}–${hm(e.arr)}</span><span class="du">${dur2(b.min*6e4)}</span>${CHEV}</button><div class="fl-mini" hidden></div>`; }).join("")+`</div>`;
   }).join(""):`<p class="note">Aucun vol ce mois-ci.</p>`;
   L.querySelectorAll(".fl-row").forEach(btn=>btn.onclick=()=>{
     const box=btn.nextElementSibling, open=btn.getAttribute("aria-expanded")==="true";
