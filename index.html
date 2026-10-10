@@ -685,7 +685,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.19", date:"2026-10-10" };
+const APP_VERSION = { n:"1.20", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1152,7 +1152,7 @@ function ltTestFlight(){
   return { id:"test-flight", test:true, cat:"vol", code:"FLT", flight:"TEST1", from:"NOU", to:"NAN", reg:"FONEA", role:"F/O",
     start:dep, end:arr, dep, arr, info:{}, crew:[{role:"CPT",people:[{code:"TST",name:"Test Commandant",flag:""}]}], notes:[], summary:"", desc:"" };
 }
-function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).sort((a,b)=>b.dep-a.dep); }
+function ltFlights(){ const now=Date.now(); return state.events.filter(e=>e.cat==="vol" && e.dep<=now+12*36e5 && e.dep>=now-45*864e5).concat(isOwner()?[ltTestFlight()]:[]).sort((a,b)=>b.dep-a.dep); } // practice flight: owner's app only
 function parseHHMM(v){ const d=(v||"").replace(/\D/g,""); if(d.length!==4) return null; const h=+d.slice(0,-2), m=+d.slice(-2); if(h>23||m>59) return null; return h*60+m; }
 function fmtHHMM(v){ const d=(v||"").replace(/\D/g,"").slice(0,4); return d.length>=3 ? d.slice(0,-2).padStart(2,"0")+":"+d.slice(-2) : d; }
 function nearTs(min,ref){ const d=new Date(ref); let best=null; for(const k of [-1,0,1]){ const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()+k,Math.floor(min/60),min%60); if(best===null||Math.abs(t-ref)<Math.abs(best-ref)) best=t; } return best; }
