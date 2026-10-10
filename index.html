@@ -685,7 +685,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.20", date:"2026-10-10" };
+const APP_VERSION = { n:"1.21", date:"2026-10-10" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -959,6 +959,8 @@ function renderStrip(){
   }).join("");
   el.querySelectorAll(".sd").forEach(b=>b.onclick=()=>goDay(b.dataset.day));
 }
+// Month shown at the top (arrows, list scroll or calendar): the summary tiles and the flight list follow it.
+function selMonthKey(){ return state.view==="cal"&&state.calMonth ? `${state.calMonth.y}-${pad(state.calMonth.m)}` : (state.activeDay||todayKey()).slice(0,7); }
 function markActive(k, scrollStrip){
   if(!k || k===state.activeDay) return;
   state.activeDay=k;
@@ -968,6 +970,7 @@ function markActive(k, scrollStrip){
   if(b){ b.classList.add("act"); if(scrollStrip){ const left=b.offsetLeft-strip.clientWidth/2+b.clientWidth/2; strip.scrollTo({left,behavior:"smooth"}); } }
   const d=new Date(keyToStart(k)+off());
   document.getElementById("mlabel").textContent=MONTHS[d.getUTCMonth()]+" "+d.getUTCFullYear();
+  if(state.view==="band" && state.sumMonth!==k.slice(0,7)){ state.sumMonth=k.slice(0,7); const sw=document.getElementById("sumwrap"); if(sw&&state.events.length) sw.innerHTML=summaryHTML(); }
 }
 function goDay(k){
   if(state.view==="cal"){
@@ -991,7 +994,7 @@ function summaryHTML(){
     const big=(nx.cat==="vol"||nx.cat==="mep")?`${esc(nx.flight)} · ${esc(nx.from)} → ${esc(nx.to)}`:esc(nx.code+(nx.place?" · "+nx.place.replace(/\s*\(.*\)$/,""):""));
     h+=`<div class="next"><span class="e">${isNow?"En cours":"Prochaine activité"}</span><span class="b">${big}</span><span class="m">${esc(longDate(dayKey(nx.start)))} · ${hm(nx.start)} – ${hm(nx.end)} ${state.tz==="NOU"?"NOU":"UTC"}</span><span class="c">${cd}</span></div>`;
   }
-  const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
+  const k=selMonthKey()+"-01", y=+k.slice(0,4), m=+k.slice(5,7);
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
   const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&isOperated(e));
   const tft=fl.reduce((n,e)=>n+blockOf(e).min,0);
@@ -1006,7 +1009,7 @@ function summaryHTML(){
 function renderBand(){
   const v=document.getElementById("view"); const t=todayKey();
   let h="";
-  document.getElementById("sumwrap").innerHTML=summaryHTML();
+  document.getElementById("sumwrap").innerHTML=summaryHTML(); state.sumMonth=selMonthKey();
   for(const k of range()){
     const list=eventsOn(k);
     const cls=["dgroup"]; if(k===t) cls.push("today"); if(k<t) cls.push("past");
@@ -2055,7 +2058,7 @@ function dutiesOf(legs){
 }
 function isOperated(e){ return e.cat==="vol" && !/^(MEP|DH|DHD|DHT|PAX|PASS|EXTRA)/i.test(e.role||""); }
 function monthFlights(){
-  const k=todayKey(), y=+k.slice(0,4), m=+k.slice(5,7);
+  const k=selMonthKey()+"-01", y=+k.slice(0,4), m=+k.slice(5,7);
   const ms=keyToStart(`${y}-${pad(m)}-01`), me=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
   return { m, list:state.events.filter(e=>e.start>=ms&&e.start<me&&isOperated(e)).sort((a,b)=>a.dep-b.dep) };
 }
