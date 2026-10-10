@@ -9,6 +9,8 @@
 - Shared version: https://aci-log.netlify.app serves the same files plus `netlify/functions` (roster and
   METAR/TAF relay, same origin). Colleagues paste their own Aircalin iCal link; it stays on their device.
   The owner's key mode (encrypted `data.json` on GitHub Pages) still works.
+  The owner's app may also run in link mode on GitHub Pages: it then calls the Netlify relays cross-origin,
+  so /api/roster allows https://thibsnc.github.io and /api/wx allows any origin (CORS). Keep that when editing them.
 - Netlify free plan: 300 credits/month, 15 per production deploy; when they run out the shared site is paused
   (never billed). `netlify.toml` skips every build unless the commit message contains `[netlify]`.
   Only add `[netlify]` when the owner asks to update the shared version (colleagues), not on routine changes.
