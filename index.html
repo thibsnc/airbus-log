@@ -240,6 +240,25 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .users .code{display:flex;gap:8px;align-items:center}
 .users .code code{flex:1;font-family:var(--f-mono);font-size:13px;background:var(--surface-2);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
 .users ol{margin:0;padding-left:20px;font-size:13px;display:grid;gap:4px}
+.set-h{margin:0 0 10px}
+.sets{display:grid;gap:8px;margin-bottom:14px}
+.set{background:var(--surface-2);border-radius:14px;overflow:hidden}
+.set > summary{list-style:none;display:grid;grid-template-columns:30px auto minmax(0,1fr) 14px;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.set > summary::-webkit-details-marker{display:none}
+.set .si{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--brand) 14%,var(--surface));color:var(--brand-text)}
+.set .si svg{width:18px;height:18px}
+.set .st{font-size:15px;font-weight:700;color:var(--fg)}
+.set .sv{font-size:13px;font-weight:600;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set .sc{color:var(--muted);transition:transform .2s}
+.set[open] .sc{transform:rotate(90deg)}
+.set[open] > summary{border-bottom:1px solid var(--line)}
+.set .sb{display:grid;gap:10px;padding:12px 14px 14px}
+.set .sb .note{margin:0}
+.set .sb .row2{margin:0}
+.set .al-row{background:var(--surface)}
+.set .ver div{background:var(--surface)}
+.set .users .u{background:var(--surface)}
+.set-close{width:100%}
 .alerts{display:grid;gap:8px}
 .al-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:10px;padding:9px 12px;font-size:14.5px;font-weight:600}
 .al-row select{font:inherit;font-weight:700;padding:6px 8px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
@@ -623,36 +642,66 @@ img{max-width:100%}
 <div class="sheet" id="sheet" hidden role="dialog" aria-label="Réglages">
   <div class="in">
     <div class="grab"></div>
-    <h3>Couleurs</h3>
-    <div class="pals" id="pals"></div>
-    <h3>Heures affichées</h3>
-    <div class="seg" role="group" aria-label="Fuseau horaire"><button id="tz-nou">Nouméa</button><button id="tz-utc">UTC</button></div>
-    <h3>Roster</h3>
-    <p class="note" id="status">—</p>
-    <div class="row2">
-      <button class="btn" id="s-refresh">Mettre à jour maintenant</button>
-      <label class="btn ghost file">Importer un .ics<input type="file" id="ics-file" accept=".ics,text/calendar"></label>
+    <h3 class="set-h">Réglages</h3>
+    <div class="sets">
+    <details class="set" data-set="pal">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="10" r="1.3" fill="currentColor"/><path d="M12 20.5c-1.5 0-2-1-2-2s1-1.6 2-1.6h1.6a3 3 0 0 0 3-3"/></svg></span><span class="st">Couleurs</span><span class="sv" id="sv-pal"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="pals" id="pals"></div>
+      </div>
+    </details>
+    <details class="set" data-set="tz">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span><span class="st">Heures affichées</span><span class="sv" id="sv-tz"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="seg" role="group" aria-label="Fuseau horaire"><button id="tz-nou">Nouméa</button><button id="tz-utc">UTC</button></div>
+      </div>
+    </details>
+    <details class="set" data-set="ros">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="st">Roster</span><span class="sv" id="sv-ros"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <p class="note" id="status">—</p>
+        <div class="row2">
+          <button class="btn" id="s-refresh">Mettre à jour maintenant</button>
+          <label class="btn ghost file">Importer un .ics<input type="file" id="ics-file" accept=".ics,text/calendar"></label>
+        </div>
+        <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
+        <button class="btn ghost" id="s-key">Changer de roster</button>
+      </div>
+    </details>
+    <details class="set" data-set="al">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><span class="st">Alertes</span><span class="sv" id="sv-al"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="alerts" id="alerts">
+          <label class="al-row"><span>Rappel avant chaque vol</span><input type="checkbox" id="al-on" class="al-switch" role="switch"></label>
+          <label class="al-row"><span>Me prévenir</span><select id="al-lead">
+            <option value="30">30 min avant</option><option value="60">1 h avant</option><option value="90">1 h 30 avant</option>
+            <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant (la veille)</option>
+          </select></label>
+          <label class="al-row"><span>Par rapport au</span><select id="al-ref">
+            <option value="ci">check-in</option><option value="dep">départ prévu</option>
+          </select></label>
+          <p class="note" style="margin:0">Le rappel donne le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
+          <button class="btn ghost" id="al-test">Recevoir un exemple de rappel</button>
+          <p class="note al-msg" id="al-msg"></p>
+        </div>
+      </div>
+    </details>
+    <details class="set" data-set="ver">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg></span><span class="st">Version</span><span class="sv" id="sv-ver"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="ver" id="ver"></div>
+      </div>
+    </details>
+    <div id="users-wrap" hidden>
+    <details class="set" data-set="usr">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6M17.5 14.4c1.7.6 2.7 2.2 3 4.6"/></svg></span><span class="st">Utilisateurs</span><span class="sv" id="sv-usr"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="users" id="users"></div>
+      </div>
+    </details>
     </div>
-    <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
-    <h3>Alertes</h3>
-    <div class="alerts" id="alerts">
-      <label class="al-row"><span>Rappel avant chaque vol</span><input type="checkbox" id="al-on" class="al-switch" role="switch"></label>
-      <label class="al-row"><span>Me prévenir</span><select id="al-lead">
-        <option value="30">30 min avant</option><option value="60">1 h avant</option><option value="90">1 h 30 avant</option>
-        <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant (la veille)</option>
-      </select></label>
-      <label class="al-row"><span>Par rapport à</span><select id="al-ref">
-        <option value="ci">l'heure de check-in</option><option value="dep">l'heure de départ prévue</option>
-      </select></label>
-      <p class="note" style="margin:0">Le rappel donne le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
-      <button class="btn ghost" id="al-test">Recevoir un exemple de rappel</button>
-      <p class="note al-msg" id="al-msg"></p>
     </div>
-    <h3>Version</h3>
-    <div class="ver" id="ver"></div>
-    <div id="users-wrap" hidden><h3>Utilisateurs de la version partagée</h3><div class="users" id="users"></div></div>
-    <button class="btn ghost" id="s-key">Changer de roster</button>
-    <button class="btn ghost" id="s-close">Fermer</button>
+    <button class="btn ghost set-close" id="s-close">Fermer</button>
   </div>
 </div>
 <div class="sheet flsheet" id="flsheet" hidden role="dialog" aria-label="Vols du mois">
@@ -715,7 +764,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.26", date:"2026-10-14" };
+const APP_VERSION = { n:"1.27", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1749,7 +1798,24 @@ window.addEventListener("scroll",()=>{
 
 /* ---------- controls ---------- */
 const sheet=document.getElementById("sheet"), scrim=document.getElementById("scrim");
-const openSheet=()=>{ setStatus(); renderVersion(); renderUsers(); renderAlerts(); if(alerts.on) syncAlerts(false,false); sheet.hidden=false; scrim.hidden=false; };
+const openSheet=()=>{ setStatus(); renderVersion(); renderUsers(); renderAlerts(); if(alerts.on) syncAlerts(false,false); setSummaries(); sheet.hidden=false; scrim.hidden=false; };
+// Settings sections: one open at a time, each shows its current value when closed.
+function setSummaries(){
+  const put=(k,t)=>{ const el=document.getElementById("sv-"+k); if(el) el.textContent=t; };
+  const pal=(typeof PALS!=="undefined"&&PALS.find(p=>p.id===state.pal))||null;
+  put("pal", pal?(pal.name||pal.n||state.pal):state.pal);
+  put("tz", state.tz==="UTC"?"UTC":"Nouméa");
+  const st=(document.getElementById("status")||{}).textContent||""; put("ros", (st.split(" · ")[0]||"").replace(/^Mis à jour /,"à jour "));
+  const ld={30:"30 min",60:"1 h",90:"1 h 30",120:"2 h",180:"3 h",720:"12 h"}[alerts.lead]||"";
+  put("al", alerts.on&&alertSupport()==="ok" ? `${ld} avant ${alerts.ref==="dep"?"le départ":"le check-in"}` : "Désactivées");
+  put("ver", APP_VERSION.n);
+  put("usr", "Admin");
+}
+document.querySelectorAll("#sheet details.set").forEach(d=>d.addEventListener("toggle",()=>{
+  if(d.open) document.querySelectorAll("#sheet details.set[open]").forEach(o=>{ if(o!==d) o.open=false; });
+}));
+document.getElementById("sheet").addEventListener("change",()=>setTimeout(setSummaries,60));
+document.getElementById("sheet").addEventListener("click",()=>setTimeout(setSummaries,60));
 const verDate=d=>{ const [y,m,j]=d.split("-").map(Number); return j+" "+MONTHS[m-1]+" "+y; };
 const verNum=v=>v.split(".").map(Number), verCmp=(a,b)=>{ const x=verNum(a), y=verNum(b); return (x[0]-y[0])||(x[1]-y[1]); };
 // Shows this app's version; on the owner's app, also the version colleagues have on the shared site.
