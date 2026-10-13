@@ -641,7 +641,10 @@ img{max-width:100%}
         <option value="30">30 min avant</option><option value="60">1 h avant</option><option value="90">1 h 30 avant</option>
         <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant (la veille)</option>
       </select></label>
-      <p class="note" style="margin:0">Le rappel arrive avant le check-in, avec le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
+      <label class="al-row"><span>Par rapport à</span><select id="al-ref">
+        <option value="ci">l'heure de check-in</option><option value="dep">l'heure de départ prévue</option>
+      </select></label>
+      <p class="note" style="margin:0">Le rappel donne le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
       <button class="btn ghost" id="al-test">Recevoir un exemple de rappel</button>
       <p class="note al-msg" id="al-msg"></p>
     </div>
@@ -712,7 +715,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.25", date:"2026-10-14" };
+const APP_VERSION = { n:"1.26", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1811,7 +1814,7 @@ async function renderUsers(){
 /* ---------- flight reminders (Web Push through the Netlify relay) ---------- */
 const PUSH_BASE = ON_SHARED ? "" : "https://aci-log.netlify.app";
 const LEAD_TXT={30:"dans 30 min",60:"dans 1 h",90:"dans 1 h 30",120:"dans 2 h",180:"dans 3 h",720:"dans 12 h"};
-let alerts=Object.assign({on:false,lead:60},store.get("alerts")||{});
+let alerts=Object.assign({on:false,lead:60,ref:"ci"},store.get("alerts")||{});
 function alertSupport(){
   if(IN_CLAUDE) return "preview";
   const ios=/iP(hone|ad|od)/.test(navigator.userAgent), standalone=navigator.standalone||matchMedia("(display-mode: standalone)").matches;
@@ -1823,7 +1826,7 @@ function alertMsg(t,err){ const m=document.getElementById("al-msg"); if(m){ m.te
 function renderAlerts(){
   const on=document.getElementById("al-on"), lead=document.getElementById("al-lead"), test=document.getElementById("al-test"); if(!on) return;
   const sup=alertSupport();
-  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok"&&isOwner()); // sample reminder: owner's app only
+  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); document.getElementById("al-ref").value=alerts.ref==="dep"?"dep":"ci"; on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok"&&isOwner()); // sample reminder: owner's app only
   if(sup==="preview") alertMsg("Les alertes s'activent dans ton app sur iPhone.");
   else if(sup==="install") alertMsg("Installe d'abord l'app sur l'écran d'accueil (Share → Add to Home Screen) : l'iPhone n'envoie les alertes qu'aux apps installées.");
   else if(sup==="unsupported") alertMsg("Cet appareil ne permet pas les alertes (iOS 16.4 minimum).",true);
@@ -1842,25 +1845,30 @@ function alertItems(){
   const now=Date.now(), lead=+alerts.lead, legs=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.dep>now&&e.dep<now+30*864e5);
   const tzl=state.tz==="NOU"?"NOU":"UTC";
   return dutiesOf(legs).map(d=>{
-    const f=d[0], ci=(legTime(f.info.Checkin,f.dep)||{ts:f.dep-90*6e4}).ts, at=ci-lead*6e4;
+    const f=d[0], ci=(legTime(f.info.Checkin,f.dep)||{ts:f.dep-90*6e4}).ts, byDep=alerts.ref==="dep", at=(byDep?f.dep:ci)-lead*6e4;
     if(at<=now) return null;
     const route=[f.from,...d.map(x=>x.to)].join(" → "), nums=[...new Set(d.map(x=>x.flight))].join("/");
-    return { at, tag:(f.id+"|"+lead).slice(0,80),
+    return { at, tag:(f.id+"|"+lead+"|"+(byDep?"d":"c")).slice(0,80),
       title:`✈︎ ${f.cat==="mep"?"MEP ":""}${nums} ${route}`.slice(0,80),
-      body:`Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(f.dep)}${f.reg?" · "+fmtReg(f.reg):""}${f.role?" · "+f.role:""}` };
+      body:alertBody(byDep,lead,ci,f.dep,tzl,f.reg?fmtReg(f.reg):"",f.role||"") };
   }).filter(Boolean);
+}
+function alertBody(byDep,lead,ci,dep,tzl,reg,role){
+  const tail=`${reg?" · "+reg:""}${role?" · "+role:""}`;
+  return byDep ? `Départ ${LEAD_TXT[lead]||""} à ${hm(dep)} ${tzl} · check-in ${hm(ci)}${tail}`
+               : `Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(dep)}${tail}`;
 }
 // A complete reminder for a fictitious flight, worded exactly like the real ones (used by the test button).
 function sampleAlert(){
-  const lead=+alerts.lead, tzl=state.tz==="NOU"?"NOU":"UTC", ci=Date.now()+lead*6e4, dep=ci+90*6e4;
+  const lead=+alerts.lead, tzl=state.tz==="NOU"?"NOU":"UTC", byDep=alerts.ref==="dep", dep=byDep?Date.now()+lead*6e4:Date.now()+lead*6e4+90*6e4, ci=dep-90*6e4;
   const last=[...state.events].reverse().find(e=>isOperated(e)), role=(last&&last.role)||"F/O", reg=(last&&fmtReg(last.reg))||"F-ONEA";
-  return { title:"✈︎ SB999 NOU → NAN → NOU (exemple)", body:`Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(dep)} · ${reg} · ${role}` };
+  return { title:"✈︎ SB999 NOU → NAN → NOU (exemple)", body:alertBody(byDep,lead,ci,dep,tzl,reg,role) };
 }
 async function syncAlerts(force,test){
   if(!alerts.on||alertSupport()!=="ok"||!state.events.length) return null;
   try{
     const sub=await pushSub(false); if(!sub){ alertMsg("Alerte inactive sur cet appareil : désactive puis réactive l'option.",true); return null; }
-    const items=alertItems(), sig=JSON.stringify([alerts.lead,items.map(x=>[x.at,x.tag,x.body])]);
+    const items=alertItems(), sig=JSON.stringify([alerts.lead,alerts.ref,items.map(x=>[x.at,x.tag,x.body])]);
     if(!force&&!test&&sig===store.get("alertsSig")&&Date.now()-(store.get("alertsAt")||0)<12*36e5) return null;
     const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:test?sampleAlert():false})});
     const d=await r.json(); if(r.ok){ store.set("alertsSig",sig); store.set("alertsAt",Date.now()); }
@@ -1883,6 +1891,7 @@ document.getElementById("al-on").addEventListener("change",async ev=>{
   }
 });
 document.getElementById("al-lead").addEventListener("change",ev=>{ alerts.lead=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
+document.getElementById("al-ref").addEventListener("change",ev=>{ alerts.ref=ev.target.value==="dep"?"dep":"ci"; store.set("alerts",alerts); syncAlerts(true,false); });
 document.getElementById("al-test").addEventListener("click",async()=>{ if(!isOwner()) return; alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Exemple envoyé (vol fictif SB999) : il arrive dans quelques secondes, exactement comme un vrai rappel.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
 let sharedVer=null;
 async function renderVersion(){
