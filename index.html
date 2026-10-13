@@ -680,8 +680,16 @@ img{max-width:100%}
           <label class="al-row"><span>Par rapport au</span><select id="al-ref">
             <option value="ci">check-in</option><option value="dep">départ prévu</option>
           </select></label>
-          <p class="note" style="margin:0">Le rappel donne le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
-          <button class="btn ghost" id="al-test">Recevoir un exemple de rappel</button>
+          <label class="al-row"><span>Deuxième rappel</span><select id="al-lead2">
+            <option value="0">Aucun</option><option value="30">30 min avant</option><option value="60">1 h avant</option><option value="90">1 h 30 avant</option>
+            <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant</option>
+          </select></label>
+          <label class="al-row"><span>Récap la veille</span><select id="al-eve">
+            <option value="0">Non</option><option value="17">à 17 h</option><option value="18">à 18 h</option><option value="19">à 19 h</option>
+            <option value="20">à 20 h</option><option value="21">à 21 h</option><option value="22">à 22 h</option>
+          </select></label>
+          <p class="note" style="margin:0">Chaque rappel donne le vol, la route, le check-in, le départ, le nombre d'étapes, le temps de vol, l'avion et ta fonction. Le récap de la veille ajoute l'heure de retour et la fin de service. Tout fonctionne même app fermée.</p>
+          <button class="btn ghost" id="al-test">Recevoir des exemples de rappels</button>
           <p class="note al-msg" id="al-msg"></p>
         </div>
       </div>
@@ -764,7 +772,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.27", date:"2026-10-14" };
+const APP_VERSION = { n:"1.28", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1807,7 +1815,8 @@ function setSummaries(){
   put("tz", state.tz==="UTC"?"UTC":"Nouméa");
   const st=(document.getElementById("status")||{}).textContent||""; put("ros", (st.split(" · ")[0]||"").replace(/^Mis à jour /,"à jour "));
   const ld={30:"30 min",60:"1 h",90:"1 h 30",120:"2 h",180:"3 h",720:"12 h"}[alerts.lead]||"";
-  put("al", alerts.on&&alertSupport()==="ok" ? `${ld} avant ${alerts.ref==="dep"?"le départ":"le check-in"}` : "Désactivées");
+  const ld2={30:"30 min",60:"1 h",90:"1 h 30",120:"2 h",180:"3 h",720:"12 h"}[alerts.lead2]||"";
+  put("al", alerts.on&&alertSupport()==="ok" ? `${ld}${ld2&&+alerts.lead2!==+alerts.lead?" + "+ld2:""} avant ${alerts.ref==="dep"?"départ":"check-in"}${+alerts.eve?` · veille ${alerts.eve} h`:""}` : "Désactivées");
   put("ver", APP_VERSION.n);
   put("usr", "Admin");
 }
@@ -1880,7 +1889,7 @@ async function renderUsers(){
 /* ---------- flight reminders (Web Push through the Netlify relay) ---------- */
 const PUSH_BASE = ON_SHARED ? "" : "https://aci-log.netlify.app";
 const LEAD_TXT={30:"dans 30 min",60:"dans 1 h",90:"dans 1 h 30",120:"dans 2 h",180:"dans 3 h",720:"dans 12 h"};
-let alerts=Object.assign({on:false,lead:60,ref:"ci"},store.get("alerts")||{});
+let alerts=Object.assign({on:false,lead:60,ref:"ci",lead2:0,eve:0},store.get("alerts")||{});
 function alertSupport(){
   if(IN_CLAUDE) return "preview";
   const ios=/iP(hone|ad|od)/.test(navigator.userAgent), standalone=navigator.standalone||matchMedia("(display-mode: standalone)").matches;
@@ -1892,7 +1901,7 @@ function alertMsg(t,err){ const m=document.getElementById("al-msg"); if(m){ m.te
 function renderAlerts(){
   const on=document.getElementById("al-on"), lead=document.getElementById("al-lead"), test=document.getElementById("al-test"); if(!on) return;
   const sup=alertSupport();
-  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); document.getElementById("al-ref").value=alerts.ref==="dep"?"dep":"ci"; on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok"&&isOwner()); // sample reminder: owner's app only
+  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); document.getElementById("al-ref").value=alerts.ref==="dep"?"dep":"ci"; document.getElementById("al-lead2").value=String(alerts.lead2||0); document.getElementById("al-eve").value=String(alerts.eve||0); on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok"&&isOwner()); // sample reminder: owner's app only
   if(sup==="preview") alertMsg("Les alertes s'activent dans ton app sur iPhone.");
   else if(sup==="install") alertMsg("Installe d'abord l'app sur l'écran d'accueil (Share → Add to Home Screen) : l'iPhone n'envoie les alertes qu'aux apps installées.");
   else if(sup==="unsupported") alertMsg("Cet appareil ne permet pas les alertes (iOS 16.4 minimum).",true);
@@ -1907,36 +1916,67 @@ async function pushSub(create){
   return sub;
 }
 // One reminder per duty (legs chained with < 6 h on the ground, positioning included), before the first check-in.
+// Everything a reminder needs about one duty (legs chained with < 6 h on the ground).
+function dutyInfo(d){
+  const f=d[0], l=d[d.length-1];
+  const ci=(legTime(f.info.Checkin,f.dep)||{ts:f.dep-90*6e4}).ts, co=(legTime(l.info.Checkout,l.arr)||{ts:l.arr+30*6e4}).ts;
+  const ops=d.filter(isOperated), block=ops.reduce((n,x)=>n+blockOf(x).min,0);
+  return { f, l, ci, co, n:d.length, block, mep:d.every(x=>x.cat==="mep"),
+    route:[f.from,...d.map(x=>x.to)].join(" → "), nums:[...new Set(d.map(x=>x.flight))].join("/"),
+    reg:f.reg?fmtReg(f.reg):"", role:(ops[0]||f).role||"" };
+}
+const tzLabel=()=>state.tz==="NOU"?"NOU":"UTC";
+function dutyTitle(x,prefix){ return `${prefix} ${x.mep?"MEP ":""}${x.nums} ${x.route}`.trim().slice(0,80); }
+function dutyFacts(x){
+  const fly=x.mep?"en mise en place":x.n>1?`${x.n} étapes · ${dur2(x.block*6e4)} de vol`:`${dur2(x.block*6e4)} de vol`;
+  return [fly, x.reg, x.role].filter(Boolean).join(" · ");
+}
+// Reminder before check-in or departure ("dans 1 h").
+function leadBody(x,lead,byDep){
+  const tz=tzLabel();
+  const head=byDep ? `Départ ${LEAD_TXT[lead]||""} à ${hm(x.f.dep)} ${tz} · check-in ${hm(x.ci)}` : `Check-in ${LEAD_TXT[lead]||""} à ${hm(x.ci)} ${tz} · départ ${hm(x.f.dep)}`;
+  return `${head} · ${dutyFacts(x)}`;
+}
+// Evening summary of tomorrow's duty.
+function eveBody(x){
+  const tz=tzLabel(), back=x.l.to===x.f.from;
+  return `Check-in ${hm(x.ci)} ${tz} · départ ${hm(x.f.dep)} · ${back?"retour":"arrivée"} ${x.l.to} ${hm(x.l.arr)} · fin de service ${hm(x.co)} · ${dutyFacts(x)}`;
+}
+const NOU_OFF=11*36e5;
+function eveAt(ts,hour){ const day=Math.floor((ts+NOU_OFF)/864e5); return (day-1)*864e5-NOU_OFF+hour*36e5; } // hour h (Nouméa) the day before
 function alertItems(){
-  const now=Date.now(), lead=+alerts.lead, legs=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.dep>now&&e.dep<now+30*864e5);
-  const tzl=state.tz==="NOU"?"NOU":"UTC";
-  return dutiesOf(legs).map(d=>{
-    const f=d[0], ci=(legTime(f.info.Checkin,f.dep)||{ts:f.dep-90*6e4}).ts, byDep=alerts.ref==="dep", at=(byDep?f.dep:ci)-lead*6e4;
-    if(at<=now) return null;
-    const route=[f.from,...d.map(x=>x.to)].join(" → "), nums=[...new Set(d.map(x=>x.flight))].join("/");
-    return { at, tag:(f.id+"|"+lead+"|"+(byDep?"d":"c")).slice(0,80),
-      title:`✈︎ ${f.cat==="mep"?"MEP ":""}${nums} ${route}`.slice(0,80),
-      body:alertBody(byDep,lead,ci,f.dep,tzl,f.reg?fmtReg(f.reg):"",f.role||"") };
-  }).filter(Boolean);
+  const now=Date.now(), byDep=alerts.ref==="dep", leads=[+alerts.lead,+alerts.lead2||0].filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const legs=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.dep>now&&e.dep<now+30*864e5);
+  const out=[];
+  for(const d of dutiesOf(legs)){
+    const x=dutyInfo(d);
+    for(const lead of leads){ const at=(byDep?x.f.dep:x.ci)-lead*6e4;
+      if(at>now) out.push({ at, tag:(x.f.id+"|"+lead+"|"+(byDep?"d":"c")).slice(0,80), title:dutyTitle(x,"✈︎"), body:leadBody(x,lead,byDep) }); }
+    if(+alerts.eve){ const at=eveAt(x.ci,+alerts.eve);
+      if(at>now&&at<x.ci-36e5) out.push({ at, tag:(x.f.id+"|eve"+alerts.eve).slice(0,80), title:dutyTitle(x,"Demain ·"), body:eveBody(x) }); }
+  }
+  return out.sort((a,b)=>a.at-b.at);
 }
-function alertBody(byDep,lead,ci,dep,tzl,reg,role){
-  const tail=`${reg?" · "+reg:""}${role?" · "+role:""}`;
-  return byDep ? `Départ ${LEAD_TXT[lead]||""} à ${hm(dep)} ${tzl} · check-in ${hm(ci)}${tail}`
-               : `Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(dep)}${tail}`;
-}
-// A complete reminder for a fictitious flight, worded exactly like the real ones (used by the test button).
-function sampleAlert(){
-  const lead=+alerts.lead, tzl=state.tz==="NOU"?"NOU":"UTC", byDep=alerts.ref==="dep", dep=byDep?Date.now()+lead*6e4:Date.now()+lead*6e4+90*6e4, ci=dep-90*6e4;
-  const last=[...state.events].reverse().find(e=>isOperated(e)), role=(last&&last.role)||"F/O", reg=(last&&fmtReg(last.reg))||"F-ONEA";
-  return { title:"✈︎ SB999 NOU → NAN → NOU (exemple)", body:alertBody(byDep,lead,ci,dep,tzl,reg,role) };
+// Complete reminders for a fictitious duty, worded exactly like the real ones (owner's test button).
+function sampleAlerts(){
+  const now=Date.now(), byDep=alerts.ref==="dep", last=[...state.events].reverse().find(e=>isOperated(e));
+  const mk=(id,from,to,d0,mins,flight)=>({ id, flight, from, to, dep:d0, arr:d0+mins*6e4, cat:"vol", role:(last&&last.role)||"F/O", reg:(last&&last.reg)||"FONEA", info:{}, crew:[] });
+  const duty=dep=>{ const x=dutyInfo([mk("x1","NOU","NAN",dep,115,"SB999"), mk("x2","NAN","NOU",dep+175*6e4,130,"SB998")]); x.block=245; return x; };
+  // each sample is timed as if it were due right now, so "dans 1 h" really is in one hour
+  const forLead=lead=>duty(byDep ? now+lead*6e4 : now+lead*6e4+90*6e4);
+  const out=[{ title:dutyTitle(forLead(+alerts.lead),"✈︎")+" (exemple)", body:leadBody(forLead(+alerts.lead),+alerts.lead,byDep) }];
+  if(+alerts.lead2&&+alerts.lead2!==+alerts.lead) out.push({ title:dutyTitle(forLead(+alerts.lead2),"✈︎")+" (exemple)", body:leadBody(forLead(+alerts.lead2),+alerts.lead2,byDep) });
+  // recap sample: a duty tomorrow at 09:00 Nouméa
+  if(+alerts.eve){ const x=duty((Math.floor((now+NOU_OFF)/864e5)+1)*864e5-NOU_OFF+9*36e5); out.push({ title:dutyTitle(x,"Demain ·")+" (exemple)", body:eveBody(x) }); }
+  return out.map(o=>({title:o.title.slice(0,80),body:o.body}));
 }
 async function syncAlerts(force,test){
   if(!alerts.on||alertSupport()!=="ok"||!state.events.length) return null;
   try{
     const sub=await pushSub(false); if(!sub){ alertMsg("Alerte inactive sur cet appareil : désactive puis réactive l'option.",true); return null; }
-    const items=alertItems(), sig=JSON.stringify([alerts.lead,alerts.ref,items.map(x=>[x.at,x.tag,x.body])]);
+    const items=alertItems(), sig=JSON.stringify([alerts.lead,alerts.lead2,alerts.eve,alerts.ref,items.map(x=>[x.at,x.tag,x.body])]);
     if(!force&&!test&&sig===store.get("alertsSig")&&Date.now()-(store.get("alertsAt")||0)<12*36e5) return null;
-    const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:test?sampleAlert():false})});
+    const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:test&&typeof test==="object"?test:false})});
     const d=await r.json(); if(r.ok){ store.set("alertsSig",sig); store.set("alertsAt",Date.now()); }
     const next=items[0];
     alertMsg(next?`Prochain rappel : ${longDate(dayKey(next.at))} à ${hm(next.at)} (${next.title.replace("✈︎ ","")}).`:"Aucun vol à rappeler dans les 30 prochains jours.");
@@ -1957,8 +1997,13 @@ document.getElementById("al-on").addEventListener("change",async ev=>{
   }
 });
 document.getElementById("al-lead").addEventListener("change",ev=>{ alerts.lead=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
+document.getElementById("al-lead2").addEventListener("change",ev=>{ alerts.lead2=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
+document.getElementById("al-eve").addEventListener("change",ev=>{ alerts.eve=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
 document.getElementById("al-ref").addEventListener("change",ev=>{ alerts.ref=ev.target.value==="dep"?"dep":"ci"; store.set("alerts",alerts); syncAlerts(true,false); });
-document.getElementById("al-test").addEventListener("click",async()=>{ if(!isOwner()) return; alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Exemple envoyé (vol fictif SB999) : il arrive dans quelques secondes, exactement comme un vrai rappel.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
+document.getElementById("al-test").addEventListener("click",async()=>{ if(!isOwner()) return;
+  alertMsg("Envoi…"); const samples=sampleAlerts(); let ok=0, d=null;
+  for(const smp of samples){ d=await syncAlerts(true,smp); if(d&&d.ok) ok++; await new Promise(r=>setTimeout(r,1200)); }
+  if(d) alertMsg(ok===samples.length?`${ok} exemple${ok>1?"s":""} envoyé${ok>1?"s":""} (vol fictif SB999) : ${ok>1?"ils arrivent":"il arrive"} dans quelques secondes, exactement comme de vrais rappels.`:"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",ok!==samples.length); });
 let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;
