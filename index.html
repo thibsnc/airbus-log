@@ -712,7 +712,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.24", date:"2026-10-14" };
+const APP_VERSION = { n:"1.25", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1823,7 +1823,7 @@ function alertMsg(t,err){ const m=document.getElementById("al-msg"); if(m){ m.te
 function renderAlerts(){
   const on=document.getElementById("al-on"), lead=document.getElementById("al-lead"), test=document.getElementById("al-test"); if(!on) return;
   const sup=alertSupport();
-  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok");
+  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok"&&isOwner()); // sample reminder: owner's app only
   if(sup==="preview") alertMsg("Les alertes s'activent dans ton app sur iPhone.");
   else if(sup==="install") alertMsg("Installe d'abord l'app sur l'écran d'accueil (Share → Add to Home Screen) : l'iPhone n'envoie les alertes qu'aux apps installées.");
   else if(sup==="unsupported") alertMsg("Cet appareil ne permet pas les alertes (iOS 16.4 minimum).",true);
@@ -1883,7 +1883,7 @@ document.getElementById("al-on").addEventListener("change",async ev=>{
   }
 });
 document.getElementById("al-lead").addEventListener("change",ev=>{ alerts.lead=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
-document.getElementById("al-test").addEventListener("click",async()=>{ alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Exemple envoyé (vol fictif SB999) : il arrive dans quelques secondes, exactement comme un vrai rappel.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
+document.getElementById("al-test").addEventListener("click",async()=>{ if(!isOwner()) return; alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Exemple envoyé (vol fictif SB999) : il arrive dans quelques secondes, exactement comme un vrai rappel.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
 let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;
