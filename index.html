@@ -688,7 +688,7 @@ img{max-width:100%}
             <option value="0">Non</option><option value="17">à 17 h</option><option value="18">à 18 h</option><option value="19">à 19 h</option>
             <option value="20">à 20 h</option><option value="21">à 21 h</option><option value="22">à 22 h</option>
           </select></label>
-          <p class="note" style="margin:0">Chaque rappel donne le vol, la route, le check-in, le départ, le nombre d'étapes, le temps de vol, l'avion et ta fonction. Le récap de la veille ajoute l'heure de retour et la fin de service. Tout fonctionne même app fermée.</p>
+          <p class="note" style="margin:0">Chaque rappel et le récap de la veille donnent le vol, la route, le check-in, l'ETD, l'ETA, le nombre d'étapes, le temps de vol et l'avion. Tout fonctionne même app fermée.</p>
           <button class="btn ghost" id="al-test">Recevoir des exemples de rappels</button>
           <p class="note al-msg" id="al-msg"></p>
         </div>
@@ -772,7 +772,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.28", date:"2026-10-14" };
+const APP_VERSION = { n:"1.29", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1929,19 +1929,12 @@ const tzLabel=()=>state.tz==="NOU"?"NOU":"UTC";
 function dutyTitle(x,prefix){ return `${prefix} ${x.mep?"MEP ":""}${x.nums} ${x.route}`.trim().slice(0,80); }
 function dutyFacts(x){
   const fly=x.mep?"en mise en place":x.n>1?`${x.n} étapes · ${dur2(x.block*6e4)} de vol`:`${dur2(x.block*6e4)} de vol`;
-  return [fly, x.reg, x.role].filter(Boolean).join(" · ");
+  return [fly, x.reg.replace(/-/g,"\u2011")].filter(Boolean).join(" · "); // non-breaking hyphen: F-ONEA stays on one line
 }
-// Reminder before check-in or departure ("dans 1 h").
-function leadBody(x,lead,byDep){
-  const tz=tzLabel();
-  const head=byDep ? `Départ ${LEAD_TXT[lead]||""} à ${hm(x.f.dep)} ${tz} · check-in ${hm(x.ci)}` : `Check-in ${LEAD_TXT[lead]||""} à ${hm(x.ci)} ${tz} · départ ${hm(x.f.dep)}`;
-  return `${head} · ${dutyFacts(x)}`;
-}
-// Evening summary of tomorrow's duty.
-function eveBody(x){
-  const tz=tzLabel(), back=x.l.to===x.f.from;
-  return `Check-in ${hm(x.ci)} ${tz} · départ ${hm(x.f.dep)} · ${back?"retour":"arrivée"} ${x.l.to} ${hm(x.l.arr)} · fin de service ${hm(x.co)} · ${dutyFacts(x)}`;
-}
+// Same text for the reminders and the evening recap: the time of the notification tells how soon it is.
+function dutyLine(x){ const tz=tzLabel(); return `Check-in ${hm(x.ci)} ${tz} · ETD ${hm(x.f.dep)} · ETA ${x.l.to} ${hm(x.l.arr)} · ${dutyFacts(x)}`; }
+function leadBody(x){ return dutyLine(x); }
+function eveBody(x){ return dutyLine(x); }
 const NOU_OFF=11*36e5;
 function eveAt(ts,hour){ const day=Math.floor((ts+NOU_OFF)/864e5); return (day-1)*864e5-NOU_OFF+hour*36e5; } // hour h (Nouméa) the day before
 function alertItems(){
