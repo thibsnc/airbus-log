@@ -642,7 +642,7 @@ img{max-width:100%}
         <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant (la veille)</option>
       </select></label>
       <p class="note" style="margin:0">Le rappel arrive avant le check-in, avec le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
-      <button class="btn ghost" id="al-test">Envoyer une alerte de test</button>
+      <button class="btn ghost" id="al-test">Recevoir un exemple de rappel</button>
       <p class="note al-msg" id="al-msg"></p>
     </div>
     <h3>Version</h3>
@@ -712,7 +712,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.23", date:"2026-10-14" };
+const APP_VERSION = { n:"1.24", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1850,13 +1850,19 @@ function alertItems(){
       body:`Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(f.dep)}${f.reg?" · "+fmtReg(f.reg):""}${f.role?" · "+f.role:""}` };
   }).filter(Boolean);
 }
+// A complete reminder for a fictitious flight, worded exactly like the real ones (used by the test button).
+function sampleAlert(){
+  const lead=+alerts.lead, tzl=state.tz==="NOU"?"NOU":"UTC", ci=Date.now()+lead*6e4, dep=ci+90*6e4;
+  const last=[...state.events].reverse().find(e=>isOperated(e)), role=(last&&last.role)||"F/O", reg=(last&&fmtReg(last.reg))||"F-ONEA";
+  return { title:"✈︎ SB999 NOU → NAN → NOU (exemple)", body:`Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(dep)} · ${reg} · ${role}` };
+}
 async function syncAlerts(force,test){
   if(!alerts.on||alertSupport()!=="ok"||!state.events.length) return null;
   try{
     const sub=await pushSub(false); if(!sub){ alertMsg("Alerte inactive sur cet appareil : désactive puis réactive l'option.",true); return null; }
     const items=alertItems(), sig=JSON.stringify([alerts.lead,items.map(x=>[x.at,x.tag,x.body])]);
     if(!force&&!test&&sig===store.get("alertsSig")&&Date.now()-(store.get("alertsAt")||0)<12*36e5) return null;
-    const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:!!test})});
+    const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:test?sampleAlert():false})});
     const d=await r.json(); if(r.ok){ store.set("alertsSig",sig); store.set("alertsAt",Date.now()); }
     const next=items[0];
     alertMsg(next?`Prochain rappel : ${longDate(dayKey(next.at))} à ${hm(next.at)} (${next.title.replace("✈︎ ","")}).`:"Aucun vol à rappeler dans les 30 prochains jours.");
@@ -1877,7 +1883,7 @@ document.getElementById("al-on").addEventListener("change",async ev=>{
   }
 });
 document.getElementById("al-lead").addEventListener("change",ev=>{ alerts.lead=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
-document.getElementById("al-test").addEventListener("click",async()=>{ alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Alerte de test envoyée : elle arrive dans quelques secondes.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
+document.getElementById("al-test").addEventListener("click",async()=>{ alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Exemple envoyé (vol fictif SB999) : il arrive dans quelques secondes, exactement comme un vrai rappel.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
 let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;

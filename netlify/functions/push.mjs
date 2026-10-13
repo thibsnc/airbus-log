@@ -37,7 +37,10 @@ export default async (req) => {
   await store.setJSON(key, { id, sub: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, items, sent, updatedAt: new Date().toISOString() });
 
   if (b.test) {
-    const status = await sendPush(sub, { title: "ACI LOG · test", body: "Les alertes de vol sont actives sur cet appareil ✈︎", tag: "test" }, jwk).catch(() => 0);
+    // The app sends a complete sample reminder (fictitious flight) so the user sees the real notification.
+    const t = b.test && typeof b.test === "object" ? b.test : {};
+    const payload = { title: clean(t.title, 80) || "ACI LOG · test", body: clean(t.body, 200) || "Les alertes de vol sont actives sur cet appareil ✈︎", tag: "test-" + Date.now() };
+    const status = await sendPush(sub, payload, jwk).catch(() => 0);
     return json({ ok: status >= 200 && status < 300, status, count: items.length });
   }
   return json({ ok: true, count: items.length });
