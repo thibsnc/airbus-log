@@ -14,6 +14,9 @@
 - Netlify free plan: 300 credits/month, 15 per production deploy; when they run out the shared site is paused
   (never billed). `netlify.toml` skips every build unless the commit message contains `[netlify]`.
   Only add `[netlify]` when the owner asks to update the shared version (colleagues), not on routine changes.
+  ALWAYS ASK FIRST: even when a change looks like it needs the shared version (server functions, a fix for colleagues),
+  finish it on the owner's app, then ask "Je publie pour les collègues (15 crédits) ?" and wait for a yes.
+  Never push a `[netlify]` commit on your own initiative.
   After each `[netlify]` deploy, tell the owner it cost 15 credits and how many remain this month
   (read it with the Netlify connector when connected; otherwise say where to look: Team settings → Billing → Usage).
   Then write the published version to the preview's store (ArtifactData set `meta/shared` = {n, date} from
