@@ -240,6 +240,16 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .users .code{display:flex;gap:8px;align-items:center}
 .users .code code{flex:1;font-family:var(--f-mono);font-size:13px;background:var(--surface-2);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
 .users ol{margin:0;padding-left:20px;font-size:13px;display:grid;gap:4px}
+.alerts{display:grid;gap:8px}
+.al-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:10px;padding:9px 12px;font-size:14.5px;font-weight:600}
+.al-row select{font:inherit;font-weight:700;padding:6px 8px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.al-switch{appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;flex:none;margin:0}
+.al-switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.al-switch:checked{background:var(--green)}
+.al-switch:checked::after{transform:translateX(18px)}
+.al-switch:disabled{opacity:.5}
+.al-msg:empty{display:none}
+.al-msg.err{color:var(--accent);font-weight:600}
 .ver{display:grid;gap:6px}
 .ver div{display:grid;grid-template-columns:1fr auto;column-gap:10px;align-items:baseline;background:var(--surface-2);border-radius:10px;padding:8px 12px}
 .ver span{font-size:13.5px;font-weight:600}
@@ -624,6 +634,17 @@ img{max-width:100%}
       <label class="btn ghost file">Importer un .ics<input type="file" id="ics-file" accept=".ics,text/calendar"></label>
     </div>
     <p class="note">Ton roster, les METAR et les TAF sont republiés toutes les 30 minutes environ. L'app récupère la dernière version à chaque ouverture et quand tu touches « Mettre à jour ».</p>
+    <h3>Alertes</h3>
+    <div class="alerts" id="alerts">
+      <label class="al-row"><span>Rappel avant chaque vol</span><input type="checkbox" id="al-on" class="al-switch" role="switch"></label>
+      <label class="al-row"><span>Me prévenir</span><select id="al-lead">
+        <option value="30">30 min avant</option><option value="60">1 h avant</option><option value="90">1 h 30 avant</option>
+        <option value="120">2 h avant</option><option value="180">3 h avant</option><option value="720">12 h avant (la veille)</option>
+      </select></label>
+      <p class="note" style="margin:0">Le rappel arrive avant le check-in, avec le vol, la route, les heures de check-in et de départ et l'avion. Il fonctionne même app fermée.</p>
+      <button class="btn ghost" id="al-test">Envoyer une alerte de test</button>
+      <p class="note al-msg" id="al-msg"></p>
+    </div>
     <h3>Version</h3>
     <div class="ver" id="ver"></div>
     <div id="users-wrap" hidden><h3>Utilisateurs de la version partagée</h3><div class="users" id="users"></div></div>
@@ -691,7 +712,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.22", date:"2026-10-13" };
+const APP_VERSION = { n:"1.23", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1685,6 +1706,7 @@ function load(ics, fetchedAt, first){
   const changed=ics!==lastIcs; lastIcs=ics; if(fetchedAt) state.fetchedAt=fetchedAt;
   if(changed){
     state.events=parseICS(ics); store.set("cache",{ics,fetchedAt:state.fetchedAt});
+    setTimeout(()=>{ try{ syncAlerts(false,false); }catch(_){} },1500);
     const owner=rosterOwner(state.events);
     if(owner && owner!==ME && !state.events.some(e=>(e.crew||[]).some(g=>g.people.some(p=>p.code===ME)))){ ME=owner; store.set("me",ME); }
     const fresh=runCheck(ics);
@@ -1724,7 +1746,7 @@ window.addEventListener("scroll",()=>{
 
 /* ---------- controls ---------- */
 const sheet=document.getElementById("sheet"), scrim=document.getElementById("scrim");
-const openSheet=()=>{ setStatus(); renderVersion(); renderUsers(); sheet.hidden=false; scrim.hidden=false; };
+const openSheet=()=>{ setStatus(); renderVersion(); renderUsers(); renderAlerts(); if(alerts.on) syncAlerts(false,false); sheet.hidden=false; scrim.hidden=false; };
 const verDate=d=>{ const [y,m,j]=d.split("-").map(Number); return j+" "+MONTHS[m-1]+" "+y; };
 const verNum=v=>v.split(".").map(Number), verCmp=(a,b)=>{ const x=verNum(a), y=verNum(b); return (x[0]-y[0])||(x[1]-y[1]); };
 // Shows this app's version; on the owner's app, also the version colleagues have on the shared site.
@@ -1786,6 +1808,76 @@ async function renderUsers(){
   const cb=document.getElementById("copy-admin");
   if(cb) cb.onclick=async()=>{ try{ await navigator.clipboard.writeText(code); toast("Code admin copié"); }catch(_){ toast("Sélectionne le code pour le copier"); } };
 }
+/* ---------- flight reminders (Web Push through the Netlify relay) ---------- */
+const PUSH_BASE = ON_SHARED ? "" : "https://aci-log.netlify.app";
+const LEAD_TXT={30:"dans 30 min",60:"dans 1 h",90:"dans 1 h 30",120:"dans 2 h",180:"dans 3 h",720:"dans 12 h"};
+let alerts=Object.assign({on:false,lead:60},store.get("alerts")||{});
+function alertSupport(){
+  if(IN_CLAUDE) return "preview";
+  const ios=/iP(hone|ad|od)/.test(navigator.userAgent), standalone=navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)) return ios&&!standalone?"install":"unsupported";
+  if(ios&&!standalone) return "install";
+  return "ok";
+}
+function alertMsg(t,err){ const m=document.getElementById("al-msg"); if(m){ m.textContent=t||""; m.classList.toggle("err",!!err); } }
+function renderAlerts(){
+  const on=document.getElementById("al-on"), lead=document.getElementById("al-lead"), test=document.getElementById("al-test"); if(!on) return;
+  const sup=alertSupport();
+  on.checked=alerts.on&&sup==="ok"; lead.value=String(alerts.lead); on.disabled=sup!=="ok"; test.hidden=!(alerts.on&&sup==="ok");
+  if(sup==="preview") alertMsg("Les alertes s'activent dans ton app sur iPhone.");
+  else if(sup==="install") alertMsg("Installe d'abord l'app sur l'écran d'accueil (Share → Add to Home Screen) : l'iPhone n'envoie les alertes qu'aux apps installées.");
+  else if(sup==="unsupported") alertMsg("Cet appareil ne permet pas les alertes (iOS 16.4 minimum).",true);
+  else if(alerts.on&&Notification.permission==="denied") alertMsg("Notifications refusées : réactive-les dans Settings → Notifications → ACI LOG.",true);
+  else if(!alerts.on) alertMsg("");
+}
+const b64key=s=>{ const p="=".repeat((4-s.length%4)%4), b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(b,c=>c.charCodeAt(0)); };
+async function pushSub(create){
+  const reg=await navigator.serviceWorker.ready; let sub=await reg.pushManager.getSubscription();
+  if(!sub&&create){ const r=await fetch(PUSH_BASE+"/api/push?key",{cache:"no-store"}); const {publicKey}=await r.json();
+    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64key(publicKey)}); }
+  return sub;
+}
+// One reminder per duty (legs chained with < 6 h on the ground, positioning included), before the first check-in.
+function alertItems(){
+  const now=Date.now(), lead=+alerts.lead, legs=state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.dep>now&&e.dep<now+30*864e5);
+  const tzl=state.tz==="NOU"?"NOU":"UTC";
+  return dutiesOf(legs).map(d=>{
+    const f=d[0], ci=(legTime(f.info.Checkin,f.dep)||{ts:f.dep-90*6e4}).ts, at=ci-lead*6e4;
+    if(at<=now) return null;
+    const route=[f.from,...d.map(x=>x.to)].join(" → "), nums=[...new Set(d.map(x=>x.flight))].join("/");
+    return { at, tag:(f.id+"|"+lead).slice(0,80),
+      title:`✈︎ ${f.cat==="mep"?"MEP ":""}${nums} ${route}`.slice(0,80),
+      body:`Check-in ${LEAD_TXT[lead]||""} à ${hm(ci)} ${tzl} · départ ${hm(f.dep)}${f.reg?" · "+fmtReg(f.reg):""}${f.role?" · "+f.role:""}` };
+  }).filter(Boolean);
+}
+async function syncAlerts(force,test){
+  if(!alerts.on||alertSupport()!=="ok"||!state.events.length) return null;
+  try{
+    const sub=await pushSub(false); if(!sub){ alertMsg("Alerte inactive sur cet appareil : désactive puis réactive l'option.",true); return null; }
+    const items=alertItems(), sig=JSON.stringify([alerts.lead,items.map(x=>[x.at,x.tag,x.body])]);
+    if(!force&&!test&&sig===store.get("alertsSig")&&Date.now()-(store.get("alertsAt")||0)<12*36e5) return null;
+    const r=await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),subscription:sub.toJSON(),items,test:!!test})});
+    const d=await r.json(); if(r.ok){ store.set("alertsSig",sig); store.set("alertsAt",Date.now()); }
+    const next=items[0];
+    alertMsg(next?`Prochain rappel : ${longDate(dayKey(next.at))} à ${hm(next.at)} (${next.title.replace("✈︎ ","")}).`:"Aucun vol à rappeler dans les 30 prochains jours.");
+    return d;
+  }catch(e){ alertMsg("Alertes injoignables pour l'instant (connexion ?).",true); return null; }
+}
+document.getElementById("al-on").addEventListener("change",async ev=>{
+  const box=ev.target;
+  if(box.checked){
+    const perm=await Notification.requestPermission(); // must stay the first await: iOS asks only inside the tap
+    if(perm!=="granted"){ box.checked=false; alertMsg("Notifications refusées : réactive-les dans Settings → Notifications → ACI LOG.",true); return; }
+    try{ await pushSub(true); }catch(e){ box.checked=false; alertMsg("Activation impossible pour l'instant (connexion ?).",true); return; }
+    alerts.on=true; store.set("alerts",alerts); renderAlerts(); await syncAlerts(true,false);
+  } else {
+    alerts.on=false; store.set("alerts",alerts); store.set("alertsSig",""); renderAlerts();
+    try{ await fetch(PUSH_BASE+"/api/push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:deviceId(),enabled:false})}); const s=await pushSub(false); if(s) await s.unsubscribe(); }catch(_){}
+    alertMsg("Alertes désactivées.");
+  }
+});
+document.getElementById("al-lead").addEventListener("change",ev=>{ alerts.lead=+ev.target.value; store.set("alerts",alerts); syncAlerts(true,false); });
+document.getElementById("al-test").addEventListener("click",async()=>{ alertMsg("Envoi…"); const d=await syncAlerts(true,true); if(d) alertMsg(d.ok?"Alerte de test envoyée : elle arrive dans quelques secondes.":"Le service d'alertes n'a pas pu joindre ton iPhone. Désactive puis réactive l'option.",!d.ok); });
 let sharedVer=null;
 async function renderVersion(){
   const el=document.getElementById("ver"); if(!el) return;

@@ -23,6 +23,11 @@
   `netlify/functions/usage.mjs` keeps one Netlify Blobs record per device. The owner's Réglages lists users via GET
   with header x-admin = SHA-256("aci-log-admin:"+access key) first 24 hex chars, checked against the Netlify env var
   ADMIN_CODE (the owner sets it; changing it needs a `[netlify]` deploy). package.json holds @netlify/blobs.
+- Flight reminders (Réglages → Alertes): Web Push. The app subscribes (VAPID key from GET /api/push?key) and POSTs
+  {id, subscription, items:[{at,title,body,tag}]} to /api/push (one item per duty, before the first check-in);
+  `netlify/functions/push-send.mjs` (scheduled every 5 min) sends due items. Encryption/VAPID are hand-written in
+  `netlify/lib/webpush.mjs` (checked against the RFC 8291 test vector); VAPID keys live in Netlify Blobs ("push/vapid").
+  iPhone: only for the app installed on the home screen, iOS 16.4+. Push changes need a `[netlify]` deploy.
 - Version shown in Réglages: run `python3 scripts/bump.py` once per change set to index.html (updates
   APP_VERSION and version.json). The owner's app compares it with https://aci-log.netlify.app/version.json.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
