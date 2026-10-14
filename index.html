@@ -833,7 +833,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.31", date:"2026-10-14" };
+const APP_VERSION = { n:"1.32", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1204,11 +1204,11 @@ function calAgendaDay(k,L){
   if(!rows.length){ const aw=calAway(k,L); if(aw) rows.push(`<div class="ag-row lay"><span class="ag-ic">${IC_BAG}</span><span class="ag-mid"><b>Escale ${esc(aw)}</b><small>${esc(apShort(aw))}</small></span><span class="ag-r"><small>journée</small></span></div>`); }
   return rows;
 }
-// The agenda fills the screen down to the tab bar.
+// The agenda can grow down to the tab bar, then scrolls.
 function calFit(){
   const A=document.getElementById("agenda"); if(!A||state.view!=="cal") return;
   const tb=document.querySelector(".tabs");
-  A.style.height=Math.max(220,innerHeight-(A.getBoundingClientRect().top+scrollY)-(tb?tb.offsetHeight:0)-10)+"px";
+  A.style.maxHeight=Math.max(220,innerHeight-(A.getBoundingClientRect().top+scrollY)-(tb?tb.offsetHeight:0)-10)+"px";
 }
 addEventListener("resize",()=>requestAnimationFrame(calFit));
 function calScrollTo(d){
@@ -1234,23 +1234,24 @@ function renderCal(){
     }).join("")+`</div>`;
   }
   h+=`</div>`;
-  let ag=""; const last=addDays(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`,-1);
-  for(let d=first; d<=last; d=addDays(d,1)){
+  // A selected day shows only that day; with no day selected (after changing month), the whole month.
+  let ag=""; const one=state.selDay, last=one||addDays(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`,-1);
+  for(let d=one||first; d<=last; d=addDays(d,1)){
     const rows=calAgendaDay(d,L); if(!rows.length&&d!==t&&d!==state.selDay) continue;
     const cls=["ag-day"]; if(d===t) cls.push("today"); if(d===state.selDay) cls.push("sel"); if(d<t) cls.push("past");
     ag+=`<section class="${cls.join(" ")}" data-day="${d}"><div class="ag-h">${esc(longDate(d))}${d===t?" · aujourd'hui":""}</div><div class="ag-card">${rows.join("")||`<div class="ag-none">Rien de prévu</div>`}</div></section>`;
   }
-  h+=`<div class="agenda" id="agenda">${ag||`<div class="ag-none">Aucune activité ce mois-ci</div>`}<div class="ag-end"></div></div>`;
+  h+=`<div class="agenda" id="agenda">${ag||`<div class="ag-none">Aucune activité ce mois-ci</div>`}${one?"":`<div class="ag-end"></div>`}</div>`;
   v.innerHTML=h;
   document.getElementById("mlabel").textContent=MONTHS[m-1]+" "+y;
-  calFit(); calScrollTo(state.selDay||t);
+  calFit(); if(!one) calScrollTo(t);
   const grid=v.querySelector("#calgrid"); let sx=null, sy=null;
   grid.addEventListener("touchstart",e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
   grid.addEventListener("touchend",e=>{ if(sx==null) return; const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null; if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5) shiftMonth(dx<0?1:-1); });
   v.querySelectorAll(".md").forEach(c=>c.onclick=()=>{
-    const d=c.dataset.day; state.selDay=d;
+    const d=c.dataset.day; state.selDay = state.selDay===d ? null : d; // tap again: back to the whole month
     if(+d.slice(5,7)!==m) state.calMonth={y:+d.slice(0,4),m:+d.slice(5,7)};
-    markActive(d,true); renderCal();
+    if(state.selDay) markActive(d,true); renderCal();
   });
   // Tapping a line opens the full card (flight card with weather, crew…) right under it.
   v.querySelectorAll(".ag-row[data-id]").forEach(r=>r.onclick=e=>{
