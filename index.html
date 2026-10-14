@@ -833,7 +833,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.32", date:"2026-10-14" };
+const APP_VERSION = { n:"1.33", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1887,12 +1887,26 @@ function rosterOwner(events){
   let best=null; for(const [c,v] of Object.entries(cnt)) if(!best||v>cnt[best]) best=c;
   return best && cnt[best]>=Math.max(1,n*.8) ? best : null;
 }
+// The crew portal's feed can drop a leg once it has been flown. Everything that has already started is kept
+// on the device (about 13 months) and put back when a new feed no longer lists it. Future items still follow
+// the feed exactly (a cancelled or changed flight disappears as before).
+function evKey(e){ return (e.cat==="vol"||e.cat==="mep") ? `${e.cat}|${e.flight}|${e.from}|${e.to}|${dayKey(e.dep)}` : `${e.cat}|${e.code}|${e.start}`; }
+function withHistory(events){
+  const now=Date.now(), who=rosterOwner(events)||"";
+  let h=store.get("hist"); if(!h||!Array.isArray(h.list)||(who&&h.me&&h.me!==who)) h={me:who,list:[]};
+  const have=new Set(events.map(evKey));
+  const kept=h.list.filter(e=>e&&e.start<now&&!have.has(evKey(e)));
+  const all=[...events,...kept].sort((a,b)=>a.start-b.start||a.end-b.end);
+  const cut=now-400*864e5;
+  store.set("hist",{me:who||h.me,list:all.filter(e=>e.start<now&&e.start>cut)});
+  return all;
+}
 let lastIcs=null;
 function load(ics, fetchedAt, first){
   if(typeof ics!=="string"||!ics.includes("BEGIN:VCALENDAR")) return false;
   const changed=ics!==lastIcs; lastIcs=ics; if(fetchedAt) state.fetchedAt=fetchedAt;
   if(changed){
-    state.events=parseICS(ics); store.set("cache",{ics,fetchedAt:state.fetchedAt});
+    state.events=withHistory(parseICS(ics)); store.set("cache",{ics,fetchedAt:state.fetchedAt});
     setTimeout(()=>{ try{ syncAlerts(false,false); }catch(_){} },1500);
     const owner=rosterOwner(state.events);
     if(owner && owner!==ME && !state.events.some(e=>(e.crew||[]).some(g=>g.people.some(p=>p.code===ME)))){ ME=owner; store.set("me",ME); }
