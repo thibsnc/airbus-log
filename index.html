@@ -279,6 +279,15 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ltc-row .ltc-ok{grid-column:1/-1}
 @media (max-width:380px){.ltc-row .btn{font-size:12.5px;padding:10px 6px}.ltc-cam svg{display:none}}
 .ltc-cam{display:inline-flex;align-items:center;gap:6px}
+/* tap an airport on a flight card: METAR / TAF */
+.fc-ap[data-wx]{cursor:pointer;border-radius:10px;-webkit-tap-highlight-color:transparent}
+.fc-ap[data-wx]:active{background:color-mix(in srgb,var(--sky) 14%,transparent)}
+.fc-ap .wxi{display:inline-block;width:15px;height:15px;margin:0 4px;vertical-align:4px;color:var(--sky-text);opacity:.75}
+.fc-ap .wxi svg{width:15px;height:15px}
+.fl-mini .fc-ap .wxi{width:12px;height:12px;vertical-align:3px}.fl-mini .fc-ap .wxi svg{width:12px;height:12px}
+.wxdec{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px}
+.wxdec span{font-family:var(--f-ui);font-size:12.5px;font-weight:700;background:var(--surface);border-radius:999px;padding:4px 9px;color:var(--fg)}
+.wxdec .cat{color:#fff}
 /* flights of the month (from the Vols tile) */
 .stat.tap{cursor:pointer;position:relative}
 .stat.tap::after{content:"›";position:absolute;right:5px;top:3px;font-size:12px;font-weight:700;color:var(--muted);opacity:.7}
@@ -772,7 +781,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.29", date:"2026-10-14" };
+const APP_VERSION = { n:"1.30", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -953,6 +962,7 @@ function shifted(t,deltaMin){
 }
 const IC_CREW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6M17.5 14.4c1.7.6 2.7 2.2 3 4.6"/></svg>';
 const IC_CLOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+const IC_WX='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .5-7.97A5.5 5.5 0 0 0 7 9.5 4.25 4.25 0 0 0 7 18z"/></svg>';
 const IC_PLANE='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 15.5v-2l-8-5V3.8a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>';
 // A duty groups legs separated by less than 6 h on the ground.
 function dutyPos(ev){
@@ -990,9 +1000,9 @@ function flightCard(ev){
   return `<article class="fcard k-${ev.cat}">
     <div class="fc-top"><span class="fc-no">${esc(ev.flight)}</span>${role}<span class="fc-reg">${esc(fmtReg(ev.reg))}</span></div>
     <div class="fc-route">
-      <div class="fc-ap"><b>${esc(ev.from)}</b><small>${esc(AIRPORTS[ev.from]||"")}</small></div>
+      <div class="fc-ap" data-wx="${esc(ev.from)}" role="button" tabindex="0" aria-label="Météo à ${esc(ev.from)}"><b>${esc(ev.from)}<i class="wxi">${IC_WX}</i></b><small>${esc(AIRPORTS[ev.from]||"")}</small></div>
       <div class="fc-mid"><span class="fc-dur">${dur}</span><span class="fc-line"><i></i>${IC_PLANE}<i></i></span></div>
-      <div class="fc-ap to"><b>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
+      <div class="fc-ap to" data-wx="${esc(ev.to)}" role="button" tabindex="0" aria-label="Météo à ${esc(ev.to)}"><b><i class="wxi">${IC_WX}</i>${esc(ev.to)}</b><small>${esc(AIRPORTS[ev.to]||"")}</small></div>
     </div>
     <div class="fc-times">${cell("Check-in",ev.info.Checkin,ev.from,0,shifted(tDep,-90),pos.first)}${cell("Departure",ev.info.Departure,ev.from,1)}${cell("Arrival",ev.info.Arrival,ev.to,1)}${cell("Check-out",ev.info.Checkout,ev.to,0,shifted(tArr,30),pos.last)}</div>
     ${issuesFor(ev.id).map(i=>`<div class="fc-warn ${i.lvl}">⚠︎ ${esc(i.msg)}</div>`).join("")}
@@ -2472,6 +2482,55 @@ function parseTafs(txt){
   });
   flush(); return o;
 }
+// Quick read of a METAR: wind, visibility, lowest significant cloud, temperature, QNH.
+function decodeMetar(raw){
+  if(!raw) return [];
+  const out=[], t=raw.split(/\s+/);
+  const w=t.find(x=>/^(\d{3}|VRB)\d{2,3}(G\d{2,3})?(KT|MPS)$/.test(x));
+  if(w){ const m=/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/.exec(w); out.push(m[1]==="VRB"?`Vent variable ${+m[2]} kt`:+m[2]===0?"Vent calme":`Vent ${m[1]}° ${+m[2]}${m[3]?"–"+(+m[3]):""} kt`); }
+  if(/\bCAVOK\b/.test(raw)) out.push("CAVOK");
+  else { const v=t.find(x=>/^\d{4}$/.test(x)); if(v) out.push(+v>=9999?"Vis ≥ 10 km":`Vis ${+v>=5000?(+v/1000)+" km":(+v)+" m"}`); }
+  const wxw=t.find(x=>/^[+-]?(VC)?(TS|SH|RA|DZ|FG|BR|HZ|SN|GR)+[A-Z]*$/.test(x)); if(wxw) out.push(wxw);
+  const cl=t.filter(x=>/^(FEW|SCT|BKN|OVC|VV)\d{3}(CB|TCU)?$/.test(x));
+  const ceil=cl.find(x=>/^(BKN|OVC|VV)/.test(x)), cb=cl.find(x=>/CB|TCU/.test(x));
+  const ft=x=>+/\d{3}/.exec(x)[0]*100;
+  if(ceil) out.push(`Plafond ${ft(ceil)} ft`); else if(cl[0]) out.push(`${/^[A-Z]+?(?=\d)/.exec(cl[0])[0]} ${ft(cl[0])} ft`);
+  if(cb) out.push(cb.endsWith("CB")?"CB":"TCU");
+  const tt=t.find(x=>/^M?\d{2}\/M?\d{2}$/.test(x)); if(tt){ const [a,b]=tt.split("/").map(x=>(x[0]==="M"?-1:1)*+x.replace("M","")); out.push(`${a}°/${b}°`); }
+  const q=t.find(x=>/^Q\d{4}$/.test(x)); if(q) out.push("QNH "+q.slice(1));
+  return out;
+}
+function metarMin(raw){ const m=/\b(\d{2})(\d{2})(\d{2})Z\b/.exec(raw||""); if(!m) return null;
+  const n=new Date(); let t=Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),+m[1],+m[2],+m[3]); if(t>Date.now()+864e5) t=Date.UTC(n.getUTCFullYear(),n.getUTCMonth()-1,+m[1],+m[2],+m[3]);
+  return Math.max(0,Math.round((Date.now()-t)/6e4)); }
+function metarAge(raw){ const min=metarMin(raw); if(min==null) return ""; return min<1?"à l'instant":min<60?`il y a ${min} min`:`il y a ${Math.floor(min/60)} h ${pad(min%60)}`; }
+function airportWxHTML(code,id){
+  const raw=wx.metars[id], col=fltCat(raw), dec=decodeMetar(raw);
+  const cat={"#16a34a":"VFR","#2563eb":"MVFR","#dc2626":"IFR","#c026d3":"LIFR"}[col]||"", catCol=col;
+  return `<div class="metarfull"><b>${esc(code)} · ${esc(id)}${AIRPORTS[code]?" · "+esc(AIRPORTS[code]):""}<span>${raw?esc(metarAge(raw)):""}</span></b>
+    ${dec.length||cat?`<div class="wxdec">${cat?`<span class="cat" style="background:${catCol||"var(--muted)"}">${cat}</span>`:""}${dec.map(x=>`<span>${esc(x)}</span>`).join("")}</div>`:""}
+    <div class="lab">METAR</div><pre>${esc(raw||"Pas de METAR disponible pour l'instant")}</pre>
+    <div class="lab">TAF</div><pre>${esc((wx.tafs&&wx.tafs[id])||"Pas de TAF disponible")}</pre></div>`;
+}
+async function openAirportWx(code){
+  const id=icao(code), L=document.getElementById("wx-list");
+  const show=()=>{ L.innerHTML=airportWxHTML(code,id); };
+  show(); document.getElementById("wx-age").textContent="";
+  wxSheet.hidden=false; scrim.hidden=false;
+  if(IN_CLAUDE){ if(!wx.metars[id]) document.getElementById("wx-age").textContent="Dans l'aperçu, seuls les aéroports du bandeau METAR sont disponibles ; ton app sur iPhone va chercher les autres."; return; }
+  // refresh this station if missing or older than 40 min
+  const age=metarMin(wx.metars[id]); if(age!=null && age<40) return;
+  document.getElementById("wx-age").textContent="Mise à jour…";
+  try{
+    const d=await (await fetch((ON_SHARED?"":"https://aci-log.netlify.app")+"/api/wx?ids="+id,{cache:"no-store"})).json();
+    const m=parseMetars(d.metar), t=parseTafs(d.taf);
+    if(m[id]) wx.metars[id]=m[id]; if(t[id]) (wx.tafs=wx.tafs||{})[id]=t[id];
+    document.getElementById("wx-age").textContent="À jour.";
+    if(!wxSheet.hidden) show();
+  }catch(_){ document.getElementById("wx-age").textContent="Météo injoignable pour l'instant (connexion ?)."; }
+}
+document.addEventListener("click",ev=>{ const a=ev.target.closest&&ev.target.closest("[data-wx]"); if(a){ ev.stopPropagation(); openAirportWx(a.dataset.wx); } });
+document.addEventListener("keydown",ev=>{ if(ev.key==="Enter"&&document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.wx) openAirportWx(document.activeElement.dataset.wx); });
 const wxSheet=document.getElementById("wxsheet");
 document.getElementById("wx-open").onclick=()=>{ closeWxMenu(); renderWxSheet(); wxSheet.hidden=false; scrim.hidden=false; };
 document.getElementById("wx-st").onclick=e=>{ e.stopPropagation(); const m=document.getElementById("wxmenu"); if(m.hidden){ renderWxMenu(); m.hidden=false; e.currentTarget.setAttribute("aria-expanded","true"); } else closeWxMenu(); };
