@@ -31,6 +31,10 @@
   `netlify/functions/push-send.mjs` (scheduled every 5 min) sends due items. Encryption/VAPID are hand-written in
   `netlify/lib/webpush.mjs` (checked against the RFC 8291 test vector); VAPID keys live in Netlify Blobs ("push/vapid").
   iPhone: only for the app installed on the home screen, iOS 16.4+. Push changes need a `[netlify]` deploy.
+- Family view (Réglages → Famille): the app POSTs a simplified schedule (flight duties with route, flight numbers and
+  times, layovers, ground days, days off; never crew names or the roster link) to /api/family with a public token t and a
+  private key k (only SHA-256(k) is stored, Netlify Blobs store "family"). `famille.html#t=…` reads it (GET) and computes
+  "where is he now / back home at". Synced on every roster change. Changes to it need a `[netlify]` deploy.
 - Version shown in Réglages: run `python3 scripts/bump.py` once per change set to index.html (updates
   APP_VERSION and version.json). The owner's app compares it with https://aci-log.netlify.app/version.json.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,

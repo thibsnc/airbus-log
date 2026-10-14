@@ -590,6 +590,11 @@ main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(
 .sd{background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(219,240,252,.75));--edge:linear-gradient(170deg,#fff,#2db6e8 60%,#f4b223)}
 .sd.today{background:linear-gradient(180deg,#fff,#ffe3d1);--edge:linear-gradient(170deg,#f4b223,#e5322d)}
 
+/* family sharing (Réglages) */
+.fam-name{font:inherit;font-weight:700;width:52%;padding:6px 9px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);text-align:right}
+.fam-link{display:grid;gap:8px}
+.fam-url{font-family:var(--f-mono);font-size:11.5px;background:var(--surface-2);border-radius:9px;padding:8px 10px;overflow-wrap:anywhere;color:var(--muted)}
+#fam-open{text-decoration:none;display:inline-flex;align-items:center}
 /* FTL box (Stats) */
 .ftl{gap:8px}
 .ftl-sec{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-text);margin-top:6px}
@@ -786,6 +791,22 @@ img{max-width:100%}
         </div>
       </div>
     </details>
+    <details class="set" data-set="fam">
+      <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M12 17.5s-3-1.8-3-3.7a1.6 1.6 0 0 1 3-.8 1.6 1.6 0 0 1 3 .8c0 1.9-3 3.7-3 3.7z"/></svg></span><span class="st">Famille</span><span class="sv" id="sv-fam"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="sb">
+        <div class="alerts" id="fam">
+          <label class="al-row"><span>Partager mon planning</span><input type="checkbox" id="fam-on" class="al-switch" role="switch"></label>
+          <label class="al-row"><span>Prénom affiché</span><input id="fam-name" class="fam-name" maxlength="30" autocomplete="given-name" placeholder="Ton prénom"></label>
+          <div class="fam-link" id="fam-link" hidden>
+            <div class="fam-url" id="fam-url"></div>
+            <div class="row2"><button class="btn" id="fam-share">Envoyer le lien</button><a class="btn ghost" id="fam-open" target="_blank" rel="noopener">Voir la page</a></div>
+            <button class="btn ghost" id="fam-new">Créer un nouveau lien</button>
+          </div>
+          <p class="note" style="margin:0">Ta famille voit où tu es, quand tu pars, quand tu rentres à Nouméa, tes escales, tes jours de repos et tes numéros de vol (avec un lien pour suivre le vol). Pas d'équipage ni de détails techniques. La page se met à jour à chaque relecture de ton roster. Désactiver le partage efface la page ; « Créer un nouveau lien » rend l'ancien inutilisable.</p>
+          <p class="note al-msg" id="fam-msg"></p>
+        </div>
+      </div>
+    </details>
     <details class="set" data-set="ver">
       <summary><span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg></span><span class="st">Version</span><span class="sv" id="sv-ver"></span><svg class="sc" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="sb">
@@ -864,7 +885,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.35", date:"2026-10-14" };
+const APP_VERSION = { n:"1.36", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -2046,6 +2067,7 @@ function load(ics, fetchedAt, first){
   if(changed){
     state.events=withHistory(parseICS(ics)); store.set("cache",{ics,fetchedAt:state.fetchedAt});
     setTimeout(()=>{ try{ syncAlerts(false,false); }catch(_){} },1500);
+    setTimeout(()=>{ try{ famSync(false); }catch(_){} },2500);
     const owner=rosterOwner(state.events);
     if(owner && owner!==ME && !state.events.some(e=>(e.crew||[]).some(g=>g.people.some(p=>p.code===ME)))){ ME=owner; store.set("me",ME); }
     const fresh=runCheck(ics);
@@ -2096,6 +2118,7 @@ function setSummaries(){
   const ld={30:"30 min",60:"1 h",90:"1 h 30",120:"2 h",180:"3 h",720:"12 h"}[alerts.lead]||"";
   const ld2={30:"30 min",60:"1 h",90:"1 h 30",120:"2 h",180:"3 h",720:"12 h"}[alerts.lead2]||"";
   put("al", alerts.on&&alertSupport()==="ok" ? `${ld}${ld2&&+alerts.lead2!==+alerts.lead?" + "+ld2:""} avant ${alerts.ref==="dep"?"départ":"check-in"}${+alerts.eve?` · veille ${alerts.eve} h`:""}` : "Désactivées");
+  put("fam", fam.on?"Partagé":"Non partagé");
   put("ver", APP_VERSION.n);
   put("usr", "Admin");
 }
@@ -2255,6 +2278,69 @@ async function syncAlerts(force,test){
     return d;
   }catch(e){ alertMsg("Alertes injoignables pour l'instant (connexion ?).",true); return null; }
 }
+/* ---------- family view (Réglages → Famille): a simplified, read-only schedule at famille.html#t=… ---------- */
+const FAM_BASE = ON_SHARED ? "" : "https://aci-log.netlify.app";
+const fam=Object.assign({on:false,t:"",k:"",name:""},store.get("fam")||{});
+if(!fam.name){ const w=store.get("who"); if(w&&w.first) fam.name=w.first; }
+const famUrl=()=>"https://aci-log.netlify.app/famille.html#t="+fam.t;
+const famRnd=()=>{ const b=new Uint8Array(18); crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); };
+const nouDay=t=>new Date(t+11*36e5).toISOString().slice(0,10);
+function famMsg(t,err){ const el=document.getElementById("fam-msg"); if(el){ el.textContent=t||""; el.classList.toggle("err",!!err); } }
+// What the family sees: flight duties (check-in → check-out, route, flight numbers), layovers, ground days, days off.
+function famSegs(){
+  const now=Date.now(), from=now-3*864e5, to=now+90*864e5, out=[];
+  const groups=dutiesOf(state.events.filter(e=>(e.cat==="vol"||e.cat==="mep")&&e.arr>from&&e.dep<to));
+  const ciOf=f=>{ const c=legTime(f.info.Checkin,f.dep); return c?c.ts:f.dep-90*6e4; }, coOf=l=>{ const c=legTime(l.info.Checkout,l.arr); return c?Math.max(c.ts,l.arr):l.arr+30*6e4; };
+  groups.forEach((g,i)=>{ const f=g[0], l=g[g.length-1], nx=groups[i+1];
+    out.push({kind:"vol",start:ciOf(f),end:coOf(l),legs:g.map(x=>({from:x.from,to:x.to,flight:x.flight,dep:x.dep,arr:x.arr}))});
+    if(l.to!=="NOU"&&nx&&nx[0].from===l.to) out.push({kind:"esc",at:l.to,start:coOf(l),end:ciOf(nx[0])}); });
+  const byDay={};
+  for(const e of state.events) if((e.cat==="sol"||e.cat==="simu")&&e.end>from&&e.start<to&&e.end-e.start<16*36e5) (byDay[nouDay(e.start)]=byDay[nouDay(e.start)]||[]).push(e);
+  for(const list of Object.values(byDay)){
+    const sim=list.some(e=>e.cat==="simu"), home=list.every(e=>/DOMICILE/i.test(e.place||"")), base=(list[0].base||"").toUpperCase();
+    const where=base&&base!=="NOU"?" à "+({CDG:"Paris"}[base]||base):home?" à la maison":" à Nouméa";
+    out.push({kind:"sol",start:Math.min(...list.map(e=>e.start)),end:Math.max(...list.map(e=>e.end)),title:(sim?"Simulateur":"Formation")+where});
+  }
+  let off=null;
+  for(const e of state.events.filter(e=>e.cat==="off"&&e.end>from&&e.start<to).sort((a,b)=>a.start-b.start)){
+    if(off&&e.start<=off.end+6e4){ off.end=Math.max(off.end,e.end); continue; }
+    off={kind:"off",start:e.start,end:e.end}; out.push(off);
+  }
+  return out.sort((a,b)=>a.start-b.start);
+}
+async function famSync(loud){
+  if(!fam.on||!fam.t) return;
+  if(IN_CLAUDE){ famMsg("Aperçu : le partage marche depuis l'app sur ton iPhone."); return; }
+  try{
+    const r=await fetch(FAM_BASE+"/api/family",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t:fam.t,k:fam.k,name:fam.name,segs:famSegs()})});
+    if(!r.ok) throw new Error(r.status);
+    const d=await r.json(); store.set("famAt",Date.now());
+    famMsg(loud?`Page à jour (${d.count} élément${d.count>1?"s":""} sur 3 mois).`:"");
+  }catch(e){ famMsg("Partage injoignable pour l'instant (connexion ?).",true); }
+}
+function renderFam(){
+  const on=document.getElementById("fam-on"); if(!on) return;
+  on.checked=!!fam.on; document.getElementById("fam-name").value=fam.name||"";
+  const box=document.getElementById("fam-link"); box.hidden=!fam.on||!fam.t;
+  if(fam.t){ document.getElementById("fam-url").textContent=famUrl(); document.getElementById("fam-open").href=famUrl(); }
+  if(typeof setSummaries==="function") setSummaries();
+}
+async function famStop(){ try{ await fetch(FAM_BASE+"/api/family",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t:fam.t,k:fam.k,enabled:false})}); }catch(_){ } }
+document.getElementById("fam-on").addEventListener("change",async ev=>{
+  if(ev.target.checked){ if(!fam.t){ fam.t=famRnd(); fam.k=famRnd(); } fam.on=true; store.set("fam",fam); renderFam(); await famSync(true); }
+  else { fam.on=false; store.set("fam",fam); renderFam(); await famStop(); famMsg("Partage arrêté : la page de ta famille est effacée."); }
+});
+document.getElementById("fam-name").addEventListener("change",ev=>{ fam.name=ev.target.value.trim().slice(0,30); store.set("fam",fam); famSync(true); });
+document.getElementById("fam-new").addEventListener("click",async()=>{
+  if(!confirm("Créer un nouveau lien ? L'ancien ne marchera plus : il faudra renvoyer le nouveau.")) return;
+  await famStop(); fam.t=famRnd(); fam.k=famRnd(); store.set("fam",fam); renderFam(); await famSync(true);
+});
+document.getElementById("fam-share").addEventListener("click",async()=>{
+  const url=famUrl(), title=`Planning${fam.name?" de "+fam.name:""}`;
+  try{ if(navigator.share){ await navigator.share({title,text:"Mon planning de vol, toujours à jour :",url}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(url); famMsg("Lien copié : colle-le dans un message."); }catch(_){ famMsg(url); }
+});
+renderFam();
 document.getElementById("al-on").addEventListener("change",async ev=>{
   const box=ev.target;
   if(box.checked){
