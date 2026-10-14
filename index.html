@@ -590,6 +590,58 @@ main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(
 .sd{background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(219,240,252,.75));--edge:linear-gradient(170deg,#fff,#2db6e8 60%,#f4b223)}
 .sd.today{background:linear-gradient(180deg,#fff,#ffe3d1);--edge:linear-gradient(170deg,#f4b223,#e5322d)}
 
+/* calendar "A": month on one glass card + agenda (chosen by the owner) */
+body.cal main{padding-bottom:0}
+.mcal{background:linear-gradient(165deg,rgba(255,255,255,.86),rgba(226,244,255,.76));backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);border:1.5px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 12px 30px rgba(10,30,110,.25),inset 0 1px 0 #fff;padding:6px 4px 4px;color:#1a1d6e}
+.mwh{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5d6a88;padding:2px 0 4px}
+.mrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.md{border:0;background:transparent;font:inherit;color:#1a1d6e;display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0 3px;cursor:pointer;min-width:0}
+.md .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:15.5px;transition:transform .15s}
+.md.out{opacity:.3}
+.md.today .n{color:#e5322d;box-shadow:inset 0 0 0 2px #e5322d}
+.md.sel .n{background:#f4b223;color:#1a1d6e;box-shadow:0 5px 12px rgba(200,140,0,.45);transform:scale(1.08)}
+.md.today.sel .n{background:#e5322d;color:#fff;box-shadow:0 5px 12px rgba(229,50,45,.45)}
+.md .pi{height:14px;display:grid;place-items:center;color:var(--cat)}
+.md .pi svg{width:14px;height:14px;display:block}
+.md .pi.k-sol,.md .pi.k-simu,.ag-row.k-sol .ag-ic,.ag-row.k-simu .ag-ic{color:#c58a00}
+.md .pi.lay,.ag-row.lay .ag-ic{color:#0b78a8}
+/* planes nose to the right */
+.md .pi.k-vol svg,.md .pi.k-mep svg,.ag-row.k-vol .ag-ic svg,.ag-row.k-mep .ag-ic svg{transform:rotate(90deg)}
+.agenda{margin-top:10px;border-radius:18px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-shadow:0 12px 30px rgba(10,30,110,.25)}
+.ag-day{position:relative}
+.ag-h{position:sticky;top:0;z-index:2;background:linear-gradient(90deg,rgba(255,255,255,.96),rgba(219,240,252,.94));color:#1a1d6e;font-weight:800;font-size:13px;padding:6px 14px;box-shadow:inset 0 -2px 0 #f4b223}
+.ag-day.sel .ag-h{background:linear-gradient(90deg,#fff5d6,#fde3a0)}
+.ag-day.today .ag-h{color:#e5322d;box-shadow:inset 0 -2px 0 #e5322d}
+.ag-card{background:linear-gradient(165deg,rgba(255,255,255,.9),rgba(232,246,255,.84));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.ag-day.past .ag-card{opacity:.7}
+.ag-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto 12px;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid rgba(31,85,201,.1);color:#101a33;cursor:pointer}
+.ag-row:first-child{border-top:0}
+.ag-ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--cat);background:color-mix(in srgb,var(--cat) 14%,transparent)}
+.ag-ic svg{width:17px;height:17px}
+.ag-mid{min-width:0}
+.ag-mid b{display:block;font-size:15.5px;font-weight:800;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-mid small{display:block;font-size:12px;color:#5d6a88;font-family:var(--f-mono)}
+.ag-r{text-align:right;white-space:nowrap}
+.ag-r b{font-family:var(--f-mono);font-size:13.5px;font-weight:700}
+.ag-r small{display:block;font-size:11.5px;color:#5d6a88}
+.ag-row .chev{color:#5d6a88;transition:transform .15s}
+.ag-row.open .chev{transform:rotate(90deg)}
+.ag-row.minor,.ag-row.lay{padding:4px 12px;cursor:default}
+.ag-row.minor .ag-ic{height:20px;background:transparent;color:#5d6a88}
+.ag-row.minor .ag-ic svg{width:15px;height:15px}
+.ag-row.minor b{font-size:12.5px;font-weight:700;color:#5d6a88}
+.ag-row.minor .ag-r b{font-size:12.5px}
+.ag-row.lay .ag-ic{background:rgba(11,120,168,.1)}
+.ag-row.open{background:rgba(244,178,35,.12)}
+.ag-full{--surface:rgba(255,255,255,.72);--surface-2:rgba(238,246,253,.78);--line:rgba(31,85,201,.14);--fg:#101a33;--muted:#5d6a88;--brand-text:#1a4fb8;--sky-text:#0b78a8;color:var(--fg)}
+.ag-full .fcard{border-radius:0}
+.ag-none{padding:10px 14px;color:#5d6a88;font-size:13px;background:rgba(255,255,255,.85)}
+.ag-end{height:40vh}
+@media (orientation:landscape) and (max-height:520px){
+  body.cal #view{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px;align-items:start}
+  body.cal .agenda{margin-top:0}
+  .md{padding:1px 0 2px}.md .n{width:26px;height:26px;font-size:14px}.md .pi{height:12px}.md .pi svg{width:12px;height:12px}
+}
 </style>
 <style>
 html{background:#1a1d6e;-webkit-text-size-adjust:100%}
@@ -781,7 +833,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.30", date:"2026-10-14" };
+const APP_VERSION = { n:"1.31", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1071,8 +1123,7 @@ function markActive(k, scrollStrip){
 }
 function goDay(k){
   if(state.view==="cal"){
-    state.selDay=k; state.calMonth={y:+k.slice(0,4),m:+k.slice(5,7)}; markActive(k,true); render();
-    const p=document.getElementById("panel"); if(p) p.scrollIntoView({behavior:"smooth",block:"start"});
+    state.selDay=k; state.calMonth={y:+k.slice(0,4),m:+k.slice(5,7)}; markActive(k,true); render(); window.scrollTo(0,0);
     return;
   }
   const g=document.getElementById("g-"+k);
@@ -1114,36 +1165,101 @@ function renderBand(){
   }
   v.innerHTML=h;
 }
+// Calendar (layout chosen by the owner, "A"): the month on one glass card, a pictogram under each day,
+// and below it the month's agenda in its own scroller (check-in, legs, check-out, layovers).
+const IC_BAG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2M9 7.5v12M15 7.5v12"/></svg>';
+const calLegs=()=>state.events.filter(e=>e.cat==="vol"||e.cat==="mep").sort((a,b)=>a.dep-b.dep);
+// Station where the crew is laid over on day k (no leg that day, away from base), else "".
+function calAway(k,L){
+  const s=keyToStart(k), e=s+864e5;
+  if(L.some(l=>l.dep<e&&l.arr>s)) return "";
+  let prev=null; for(const l of L){ if(l.arr<=s) prev=l; else break; }
+  const next=L.find(l=>l.dep>=e);
+  return prev&&next&&prev.to!=="NOU"&&next.from===prev.to ? prev.to : "";
+}
+const calTop=list=>list.length?[...list].sort((a,b)=>RANK[b.cat]-RANK[a.cat])[0].cat:null;
+const apShort=c=>(AIRPORTS[c]||"").replace(/\s—.*$/,"");
+function calAgendaDay(k,L){
+  const s=keyToStart(k), e=s+864e5, rows=[];
+  const minor=(label,t)=>`<div class="ag-row minor"><span class="ag-ic">${IC_CLOCK}</span><span class="ag-mid"><b>${label}</b></span><span class="ag-r"><b>${hm(t)}</b></span></div>`;
+  for(const ev of eventsOn(k).sort((a,b)=>(a.dep||a.start)-(b.dep||b.start))){
+    if(ev.cat==="vol"||ev.cat==="mep"){
+      if(ev.dep<s) continue; // a leg is listed on its departure day
+      const pos=dutyPos(ev);
+      if(pos.first&&ev.cat==="vol"){ const c=legTime(ev.info.Checkin,ev.dep); rows.push(minor("Check-in",c?c.ts:ev.dep-90*6e4)); }
+      rows.push(`<div class="ag-row k-${ev.cat}" data-id="${esc(ev.id)}" role="button" tabindex="0"><span class="ag-ic">${IC[ev.cat]}</span><span class="ag-mid"><b>${esc(ev.from)} – ${esc(ev.to)}</b><small>${esc(ev.flight)}${ev.cat==="mep"?" · MEP":(ev.reg?" · "+esc(fmtReg(ev.reg)):"")}</small></span><span class="ag-r"><b>${hm(ev.dep)} – ${hm(ev.arr)}</b><small>${dur2(ev.arr-ev.dep)}</small></span>${CHEV}</div>`);
+      if(pos.last){
+        const nx=L.find(l=>l.dep>ev.arr);
+        if(ev.to!=="NOU"&&nx&&nx.from===ev.to) rows.push(`<div class="ag-row lay"><span class="ag-ic">${IC_BAG}</span><span class="ag-mid"><b>Escale ${esc(ev.to)}</b><small>${esc(apShort(ev.to))}</small></span><span class="ag-r"><b>${dur2(nx.dep-ev.arr)}</b></span></div>`);
+        else if(ev.cat==="vol"){ const c=legTime(ev.info.Checkout,ev.arr); rows.push(minor("Check-out",c?c.ts:ev.arr+30*6e4)); }
+      }
+    } else if(ev.cat==="off"){
+      if(rows.some(r=>r.includes("ag-row k-off"))) continue;
+      rows.push(`<div class="ag-row k-off" data-id="${esc(ev.id)}" role="button" tabindex="0"><span class="ag-ic">${IC.off}</span><span class="ag-mid"><b>OFF</b><small>Repos</small></span><span class="ag-r"><small>journée</small></span>${CHEV}</div>`);
+    } else {
+      const pl=(ev.place||"").replace(/\s*\(.*\)$/,"");
+      rows.push(`<div class="ag-row k-${ev.cat}" data-id="${esc(ev.id)}" role="button" tabindex="0"><span class="ag-ic">${IC[ev.cat]}</span><span class="ag-mid"><b>${esc(ev.code)}</b><small>${esc(pl||CAT_LABEL[ev.cat]||"")}</small></span><span class="ag-r"><b>${hm(Math.max(ev.start,s))} – ${ev.end>e?"23:59":hm(ev.end)}</b></span>${CHEV}</div>`);
+    }
+  }
+  if(!rows.length){ const aw=calAway(k,L); if(aw) rows.push(`<div class="ag-row lay"><span class="ag-ic">${IC_BAG}</span><span class="ag-mid"><b>Escale ${esc(aw)}</b><small>${esc(apShort(aw))}</small></span><span class="ag-r"><small>journée</small></span></div>`); }
+  return rows;
+}
+// The agenda fills the screen down to the tab bar.
+function calFit(){
+  const A=document.getElementById("agenda"); if(!A||state.view!=="cal") return;
+  const tb=document.querySelector(".tabs");
+  A.style.height=Math.max(220,innerHeight-(A.getBoundingClientRect().top+scrollY)-(tb?tb.offsetHeight:0)-10)+"px";
+}
+addEventListener("resize",()=>requestAnimationFrame(calFit));
+function calScrollTo(d){
+  const A=document.getElementById("agenda"); if(!A) return;
+  const sec=[...A.querySelectorAll(".ag-day")].find(x=>x.dataset.day>=d);
+  A.scrollTop=sec?sec.getBoundingClientRect().top-A.getBoundingClientRect().top+A.scrollTop:0;
+}
 function renderCal(){
   const v=document.getElementById("view");
   if(!state.calMonth){ const t=todayKey(); state.calMonth={y:+t.slice(0,4),m:+t.slice(5,7)}; }
-  const {y,m}=state.calMonth; const first=`${y}-${pad(m)}-01`;
+  const {y,m}=state.calMonth, first=`${y}-${pad(m)}-01`, t=todayKey(), L=calLegs();
   const dow=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
-  let k=addDays(first,-dow); const t=todayKey();
-  let h=`<div class="grid" id="calgrid">`+["lun","mar","mer","jeu","ven","sam","dim"].map(w=>`<div class="wh">${w}</div>`).join("");
-  for(let i=0;i<42;i++,k=addDays(k,1)){
-    if(i===35 && +k.slice(5,7)!==m) break;
-    const list=eventsOn(k);
-    const cls=["cell"]; if(+k.slice(5,7)!==m) cls.push("out"); if(k===t) cls.push("today"); if(k===state.selDay) cls.push("sel");
-    const chips=list.slice(0,3).map(e=>`<span class="chip k-${e.cat}">${esc(e.cat==="off"?"OFF":(e.cat==="vol"||e.cat==="mep")?e.flight:e.code)}</span>`).join("");
-    h+=`<button class="${cls.join(" ")}" data-day="${k}"><span class="n">${+k.slice(8)}</span>${chips}${list.length>3?`<span class="more">+${list.length-3}</span>`:""}</button>`;
+  let k=addDays(first,-dow);
+  let h=`<div class="mcal" id="calgrid"><div class="mwh">`+["lun","mar","mer","jeu","ven","sam","dim"].map(w=>`<span>${w}</span>`).join("")+`</div>`;
+  for(let w=0;w<6;w++){
+    const days=[]; for(let i=0;i<7;i++,k=addDays(k,1)) days.push(k);
+    if(w===5&&+days[0].slice(5,7)!==m) break;
+    h+=`<div class="mrow">`+days.map(d=>{
+      const cls=["md"]; if(+d.slice(5,7)!==m) cls.push("out"); if(d===t) cls.push("today"); if(d===state.selDay) cls.push("sel");
+      const c=calTop(eventsOn(d)), aw=c?"":calAway(d,L);
+      const pi=c?`<span class="pi k-${c}">${IC[c]}</span>`:aw?`<span class="pi lay">${IC_BAG}</span>`:`<span class="pi"></span>`;
+      return `<button class="${cls.join(" ")}" data-day="${d}" aria-label="${esc(longDate(d))}"><span class="n">${+d.slice(8)}</span>${pi}</button>`;
+    }).join("")+`</div>`;
   }
   h+=`</div>`;
-  if(state.selDay){
-    const list=eventsOn(state.selDay);
-    h+=`<section class="panel" id="panel"><div class="dhead">${esc(longDate(state.selDay))}</div><div class="card">${list.length?list.map(e=>row(e,state.selDay)).join(""):`<div class="none">Aucune activité</div>`}</div></section>`;
+  let ag=""; const last=addDays(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`,-1);
+  for(let d=first; d<=last; d=addDays(d,1)){
+    const rows=calAgendaDay(d,L); if(!rows.length&&d!==t&&d!==state.selDay) continue;
+    const cls=["ag-day"]; if(d===t) cls.push("today"); if(d===state.selDay) cls.push("sel"); if(d<t) cls.push("past");
+    ag+=`<section class="${cls.join(" ")}" data-day="${d}"><div class="ag-h">${esc(longDate(d))}${d===t?" · aujourd'hui":""}</div><div class="ag-card">${rows.join("")||`<div class="ag-none">Rien de prévu</div>`}</div></section>`;
   }
+  h+=`<div class="agenda" id="agenda">${ag||`<div class="ag-none">Aucune activité ce mois-ci</div>`}<div class="ag-end"></div></div>`;
   v.innerHTML=h;
   document.getElementById("mlabel").textContent=MONTHS[m-1]+" "+y;
+  calFit(); calScrollTo(state.selDay||t);
   const grid=v.querySelector("#calgrid"); let sx=null, sy=null;
   grid.addEventListener("touchstart",e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
   grid.addEventListener("touchend",e=>{ if(sx==null) return; const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null; if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5) shiftMonth(dx<0?1:-1); });
-  v.querySelectorAll(".cell").forEach(c=>c.onclick=()=>{
-    const d=c.dataset.day; state.selDay = state.selDay===d ? null : d;
+  v.querySelectorAll(".md").forEach(c=>c.onclick=()=>{
+    const d=c.dataset.day; state.selDay=d;
     if(+d.slice(5,7)!==m) state.calMonth={y:+d.slice(0,4),m:+d.slice(5,7)};
-    if(state.selDay) markActive(d,true);
-    renderCal();
-    const p=document.getElementById("panel"); if(p){ const ds=p.querySelectorAll("details.ev"); if(ds.length===1) ds[0].open=true; p.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+    markActive(d,true); renderCal();
+  });
+  // Tapping a line opens the full card (flight card with weather, crew…) right under it.
+  v.querySelectorAll(".ag-row[data-id]").forEach(r=>r.onclick=e=>{
+    if(e.target.closest(".ag-full")) return;
+    const nx=r.nextElementSibling; if(nx&&nx.classList.contains("ag-full")){ nx.remove(); r.classList.remove("open"); return; }
+    const ev=state.events.find(x=>x.id===r.dataset.id); if(!ev) return;
+    const box=document.createElement("div"); box.className="ag-full"; box.innerHTML=row(ev,r.closest(".ag-day").dataset.day);
+    const det=box.querySelector("details.ev"); if(det) det.open=true;
+    r.after(box); r.classList.add("open");
   });
 }
 function render(){
@@ -2036,9 +2152,7 @@ scrim.onclick=closeSheet;
 document.getElementById("v-band").onclick=()=>{ state.view="band"; store.set("view","band"); render(); anchorToday(); };
 function showTodayInCal(){
   const k=todayKey(); state.selDay=k; state.calMonth={y:+k.slice(0,4),m:+k.slice(5,7)};
-  render(); window.scrollTo(0,0);
-  const p=document.getElementById("panel");
-  if(p){ p.querySelectorAll("details.ev").forEach(d=>d.open=true); requestAnimationFrame(()=>p.scrollIntoView({behavior:"smooth",block:"start"})); }
+  window.scrollTo(0,0); render();
 }
 document.getElementById("v-plan").onclick=()=>{ if(state.view==="cal"){ showTodayInCal(); return; } state.view="cal"; store.set("view","cal"); showTodayInCal(); };
 function shiftMonth(d){
@@ -2358,6 +2472,7 @@ async function pullRefresh(){
     if(blocked()||e.touches.length!==1){ y0=null; return; }
     const onTop=e.target.closest&&e.target.closest(".top");
     if(scrollY>2&&!onTop){ y0=null; return; }
+    const ag=e.target.closest&&e.target.closest("#agenda"); if(ag&&ag.scrollTop>2){ y0=null; return; }
     y0=e.touches[0].clientY; x0=e.touches[0].clientX; pull=0; active=false;
   },{passive:true});
   addEventListener("touchmove",e=>{
