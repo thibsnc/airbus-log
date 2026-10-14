@@ -590,6 +590,37 @@ main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(
 .sd{background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(219,240,252,.75));--edge:linear-gradient(170deg,#fff,#2db6e8 60%,#f4b223)}
 .sd.today{background:linear-gradient(180deg,#fff,#ffe3d1);--edge:linear-gradient(170deg,#f4b223,#e5322d)}
 
+/* FTL box (Stats) */
+.ftl{gap:8px}
+.ftl-sec{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-text);margin-top:6px}
+.ftl-sec small{font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}
+.ftl-r{display:grid;gap:4px}
+.ftl-l{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13.5px}
+.ftl-l span{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.ftl-l em{font-style:normal;font-weight:800;color:var(--fg);font-size:14px}
+.ftl-bar{position:relative;height:9px;border-radius:5px;background:var(--surface-2);overflow:visible}
+.ftl-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--green)}
+.ftl-bar i.f-warn{background:var(--gold)} .ftl-bar i.f-over{background:var(--accent)}
+.ftl-bar u{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--brand-text);text-decoration:none}
+.ftl-r.f-warn .ftl-bar u{background:var(--gold)} .ftl-r.f-over .ftl-bar u{background:var(--accent)}
+.ftl-r small{font-size:11.5px;color:var(--muted)}
+.ftl-r.f-over small b{color:var(--accent)}
+.ftl-c{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start;font-size:13px}
+.ftl-c>span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;background:var(--green)}
+.ftl-c.f-over>span{background:var(--accent)}
+.ftl-c ul{margin:4px 0 0;padding-left:16px;font-size:12px;color:var(--muted)}
+.ftl-fdp{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.ftl-fdp li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:baseline;font-size:12.5px;padding:5px 8px;border-radius:8px;background:var(--surface-2);border-left:4px solid var(--green)}
+.ftl-fdp li.f-warn{border-left-color:var(--gold)} .ftl-fdp li.f-over{border-left-color:var(--accent)}
+.ftl-fdp .rt{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ftl-fdp .v{font-family:var(--f-mono);font-weight:800}
+.ftl-fdp .v small{font-weight:600;color:var(--muted)}
+.ftl-rules{border-top:1px solid var(--line);padding-top:8px;margin-top:4px}
+.ftl-rules summary{font-weight:800;font-size:13.5px;color:var(--brand-text);cursor:pointer}
+.ftl-rules h4{margin:12px 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ftl-rules ul{margin:0;padding-left:18px;font-size:13px;display:grid;gap:3px}
+.ftl-rules .tbl{margin:4px 0 6px}
+.ftl-rules table{font-size:12px}
 /* calendar "A": month on one glass card + agenda (chosen by the owner) */
 body.cal main{padding-bottom:0}
 .mcal{background:linear-gradient(165deg,rgba(255,255,255,.86),rgba(226,244,255,.76));backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);border:1.5px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 12px 30px rgba(10,30,110,.25),inset 0 1px 0 #fff;padding:6px 4px 4px;color:#1a1d6e}
@@ -833,7 +864,7 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.34", date:"2026-10-14" };
+const APP_VERSION = { n:"1.35", date:"2026-10-14" };
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1804,6 +1835,104 @@ function syncArchive(){
   }
   if(changed) store.set("flights",Object.fromEntries(archive));
 }
+const FTL_DUTY=[[7,60],[14,110],[28,190]];
+/* ---------- FTL (EASA ORO.FTL): cumulative limits, FDP, rest. Indicative: the operator's OM-A prevails. ---------- */
+const nouMin=t=>{ const d=new Date(t+11*36e5); return d.getUTCHours()*60+d.getUTCMinutes(); };
+// Max daily FDP, acclimatised crew (ORO.FTL.205 table), by local report time, for 1–2 sectors; −30 min per sector from the 3rd, never below 9 h.
+function fdpMax(r,sectors){
+  let b;
+  if(r>=360&&r<810) b=780;                                  // 06:00–13:29 → 13:00
+  else if(r>=810&&r<1020) b=780-15*(Math.floor((r-810)/30)+1); // 13:30–16:59 → 12:45 … 11:15
+  else if(r>=1020||r<300) b=660;                             // 17:00–04:59 → 11:00
+  else b=720+15*Math.floor((r-300)/15);                      // 05:00–05:59 → 12:00 … 12:45
+  return Math.max(540,b-30*Math.max(0,sectors-2));
+}
+// Duty periods: flight duties (check-in → check-out, positioning included) and ground duties (training, simulator…).
+function ftlDuties(){
+  const out=[], legs=state.events.filter(e=>e.cat==="vol"||e.cat==="mep");
+  for(const g of dutiesOf(legs)){
+    const f=g[0], l=g[g.length-1], ci=legTime(f.info.Checkin,f.dep), co=legTime(l.info.Checkout,l.arr);
+    const start=ci?ci.ts:f.dep-(f.cat==="vol"?90:60)*6e4, end=Math.max(co?co.ts:l.arr+30*6e4,l.arr);
+    const ops=g.filter(isOperated), lo=ops[ops.length-1];
+    out.push({start,end,kind:"vol",legs:g,ops,fdpEnd:lo?blockOf(lo).arr:null,rep:ci&&ci.loc?+ci.loc.slice(0,2)*60+ +ci.loc.slice(3,5):nouMin(start),away:l.to!=="NOU"});
+  }
+  // whole-day markers (16 h or more) are not duty
+  for(const e of state.events) if((e.cat==="sol"||e.cat==="simu")&&e.end>e.start&&e.end-e.start<16*36e5) out.push({start:e.start,end:e.end,kind:e.cat,ev:e,away:false});
+  return out.sort((a,b)=>a.start-b.start);
+}
+function ivMerge(iv,gap=0){ const out=[]; for(const x of [...iv].sort((a,b)=>a.start-b.start)){ const l=out[out.length-1];
+  if(l&&x.start<=l.end+gap){ l.end=Math.max(l.end,x.end); l.items.push(x); } else out.push({start:x.start,end:x.end,items:[x]}); } return out; }
+function ivSum(iv,a,b){ let n=0; for(const x of iv){ const s=Math.max(a,x.start), e=Math.min(b,x.end); if(e>s) n+=e-s; } return n; }
+function ivPeak(iv,W,from,to){ let best={v:-1,t:null}; const c=new Set([from,to]); for(const x of iv){ c.add(x.end); c.add(x.start+W); }
+  for(const t of c){ if(t<from||t>to) continue; const v=ivSum(iv,t-W,t); if(v>best.v) best={v,t}; } return best; }
+// Two local nights (8 h between 22:00 and 08:00, Nouméa time) inside a rest.
+function localNights(a,b){ let n=0; const d0=Math.floor((a+11*36e5)/864e5)-1;
+  for(let d=d0; d*864e5-11*36e5<b; d++){ const ns=d*864e5-11*36e5+22*36e5, ne=ns+10*36e5; if(Math.min(b,ne)-Math.max(a,ns)>=8*36e5) n++; } return n; }
+function ftlHTML(){
+  const now=Date.now(), D=864e5, duties=ftlDuties();
+  if(!duties.length) return "";
+  const iv=ivMerge(duties), lastEnd=Math.max(...state.events.map(e=>e.end));
+  const H=m=>hmm(Math.round(m)), day=t=>{ const s=longDate(dayKey(t)); return s.slice(0,1).toLowerCase()+s.slice(1); };
+  const cls=p=>p>1?"f-over":p>=.8?"f-warn":"f-ok";
+  const gauge=(label,cur,lim,peak,note)=>{ const p=cur/lim, pk=peak&&peak.v>cur?peak:null;
+    return `<div class="ftl-r ${cls(Math.max(p,pk?pk.v/lim:0))}"><div class="ftl-l"><b>${label}</b><span><em>${H(cur)}</em> / ${Math.round(lim/60)} h</span></div>
+      <div class="ftl-bar"><i class="${cls(p)}" style="width:${Math.min(100,p*100).toFixed(1)}%"></i>${pk?`<u style="left:${Math.min(100,pk.v/lim*100).toFixed(1)}%"></u>`:""}</div>
+      <small>${[pk?(pk.txt?`${pk.txt} : <b>${H(pk.v)}</b>`:`Pic prévu : <b>${H(pk.v)}</b> au ${esc(day(pk.t-1))}`):(note?"":"Aucun pic plus haut dans le roster publié"),note||""].filter(Boolean).join(" · ")}</small></div>`; };
+  // duty time
+  const dv=FTL_DUTY.map(([d,h])=>gauge(`Service · ${d} jours`,ivSum(iv,now-d*D,now)/6e4,h*60,(()=>{ const p=ivPeak(iv,d*D,now,lastEnd); return p.t?{v:p.v/6e4,t:p.t}:null; })()));
+  // flight time (block, operating crew)
+  const past=allFlights().filter(f=>!/^(MEP|DH|DHD|DHT|PAX|PASS|EXTRA)/i.test(f.role||"")).map(f=>({t:f.dep,m:f.block}));
+  const fut=state.events.filter(e=>isOperated(e)&&e.arr>now).map(e=>({t:e.dep,m:blockOf(e).min}));
+  const fl=[...past,...fut], sumFl=(a,b)=>fl.reduce((n,f)=>n+(f.t>a&&f.t<=b?f.m:0),0);
+  let pk28={v:-1,t:null}; for(const t of [now,...fut.map(f=>f.t)]){ const v=sumFl(t-28*D,t); if(v>pk28.v) pk28={v,t:t+1}; }
+  const tk=todayKey(), y=+tk.slice(0,4), m=+tk.slice(5,7);
+  const yS=keyToStart(`${y}-01-01`), yE=keyToStart(`${y+1}-01-01`);
+  const m12=keyToStart(`${m===12?y:y-1}-${pad(m===12?1:m+1)}-01`), mE=keyToStart(m===12?`${y+1}-01-01`:`${y}-${pad(m+1)}-01`);
+  const first=fl.length?Math.min(...fl.map(f=>f.t)):now;
+  const since=`Vols connus depuis le ${esc(day(first))} ${new Date(first).getUTCFullYear()}`;
+  const yrDone=sumFl(yS,now), yrAll=sumFl(yS,yE), mDone=sumFl(m12,now), mAll=sumFl(m12,mE);
+  const fv=[gauge("Temps de vol · 28 jours",sumFl(now-28*D,now),6000,pk28.v>0?pk28:null),
+    gauge(`Temps de vol · année ${y}`,yrDone,54000,yrAll>yrDone?{v:yrAll,t:yE,txt:"Avec les vols prévus"}:null,first>yS?since:null),
+    gauge("Temps de vol · 12 mois civils",mDone,60000,mAll>mDone?{v:mAll,t:mE,txt:"Avec les vols prévus"}:null,first>m12?since:null)];
+  // FDP of flight duties (last 28 days and roster ahead)
+  const fdps=duties.filter(d=>d.kind==="vol"&&d.fdpEnd&&d.end>now-28*D).map(d=>{ const fdp=Math.round((d.fdpEnd-d.start)/6e4), mx=fdpMax(d.rep,d.ops.length);
+    const route=[d.legs[0].from,...d.legs.map(l=>l.to)].join("-");
+    return `<li class="${fdp>mx?"f-over":fdp>=mx-15?"f-warn":"f-ok"}"><span>${esc(day(d.start).replace(/(\S{3})\S*$/,"$1."))}</span><span class="rt">${esc(route)}</span><span class="v">${H(fdp)} <small>/ ${H(mx)}</small></span></li>`; });
+  // rest between duties (gaps under 8 h stay inside the same duty)
+  const per=ivMerge(duties,8*36e5), rests=[]; let short=[];
+  for(let i=0;i+1<per.length;i++){ const a=per[i], b=per[i+1], r=b.start-a.end;
+    const away=a.items[a.items.length-1].away, need=Math.max(a.end-a.start,(away?10:12)*36e5);
+    rests.push({a:a.end,b:b.start,r}); if(r<need) short.push(`${day(a.end)} : ${H(r/6e4)} (minimum ${H(need/6e4)})`); }
+  const weekly=rests.filter(x=>x.r>=36*36e5&&localNights(x.a,x.b)>=2), longGap=[];
+  for(let i=0;i+1<weekly.length;i++){ const g=weekly[i+1].a-weekly[i].b; if(g>168*36e5) longGap.push(`du ${day(weekly[i].b)} au ${day(weekly[i+1].a)} : ${H(g/6e4)}`); }
+  const chk=(ok,txt,list)=>`<div class="ftl-c ${ok?"f-ok":"f-over"}"><span>${ok?"✓":"!"}</span><div>${txt}${list&&list.length?`<ul>${list.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}</div></div>`;
+  let h=`<div class="box ftl"><h3>Limitations FTL · EASA</h3>
+    <div class="ftl-sec">Temps de service</div>${dv.join("")}
+    <div class="ftl-sec">Temps de vol (bloc à bloc)</div>${fv.join("")}
+    <div class="ftl-sec">Contrôles sur ton roster</div>
+    ${chk(!short.length,short.length?`Repos minimum non respecté ${short.length} fois`:`Repos minimum respecté (${rests.length} repos vérifiés)`,short)}
+    ${chk(!longGap.length,longGap.length?"Plus de 168 h sans repos périodique de 36 h":`Repos périodique : ${weekly.length} repos de 36 h avec 2 nuits locales, jamais plus de 168 h entre deux`,longGap)}
+    ${fdps.length?`<div class="ftl-sec">FDP de tes services de vol <small>(réel / maximum)</small></div><ul class="ftl-fdp">${fdps.join("")}</ul>`:""}
+    <details class="ftl-rules"><summary>Rappel de la réglementation EASA</summary>
+      <h4>Temps de service · ORO.FTL.210</h4>
+      <ul><li><b>60 h</b> sur 7 jours consécutifs</li><li><b>110 h</b> sur 14 jours consécutifs</li><li><b>190 h</b> sur 28 jours consécutifs, réparties aussi régulièrement que possible</li><li>Le temps après le vol et les mises en place comptent comme temps de service.</li></ul>
+      <h4>Temps de vol · ORO.FTL.210</h4>
+      <ul><li><b>100 h</b> sur 28 jours consécutifs</li><li><b>900 h</b> par année civile</li><li><b>1 000 h</b> sur 12 mois civils consécutifs</li><li>Temps bloc à bloc des étapes où tu es membre d'équipage en fonction.</li></ul>
+      <h4>FDP maximal · ORO.FTL.205 (équipage acclimaté)</h4>
+      <div class="tbl"><table><thead><tr><th>Présentation (heure locale)</th><th>1–2 étapes</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead><tbody>
+        <tr><td>06:00 – 13:29</td><td>13:00</td><td>12:30</td><td>12:00</td><td>11:30</td><td>11:00</td></tr>
+        <tr><td>13:30 – 16:59</td><td>12:45 → 11:15</td><td colspan="4">−15 min par demi-heure</td></tr>
+        <tr><td>17:00 – 04:59</td><td>11:00</td><td>10:30</td><td>10:00</td><td>9:30</td><td>9:00</td></tr>
+        <tr><td>05:00 – 05:59</td><td>12:00 → 12:45</td><td colspan="4">+15 min par quart d'heure</td></tr>
+      </tbody></table></div>
+      <ul><li>−30 min par étape à partir de la 3ᵉ, jamais moins de <b>9 h</b>.</li><li>Acclimatation inconnue : 11:00 pour 1–2 étapes, puis −30 min par étape.</li><li>Prolongation planifiée : jusqu'à <b>+1 h</b>, au plus 2 fois sur 7 jours consécutifs.</li><li>Discrétion du commandant : jusqu'à <b>+2 h</b> (+3 h en équipage renforcé).</li></ul>
+      <h4>Repos · ORO.FTL.235</h4>
+      <ul><li>À la base : au moins la durée du service précédent, <b>12 h minimum</b>.</li><li>Hors base : au moins la durée du service précédent, <b>10 h minimum</b>, dont 8 h de possibilité de sommeil.</li><li>Repos périodique : <b>36 h</b> incluant 2 nuits locales, jamais plus de <b>168 h</b> entre deux.</li><li>Porté à 2 jours locaux deux fois par mois.</li><li>Nuit locale : 8 h entre 22:00 et 08:00, heure locale.</li></ul>
+    </details>
+    <p>Calcul indicatif fait sur ton roster (vols prévus compris) et sur l'historique gardé par l'app. Le service va du check-in au check-out, les journées de formation et de simulateur comptent. Les nuits locales sont comptées en heure de Nouméa. C'est le manuel d'exploitation Aircalin (OM‑A) qui fait foi.</p>
+  </div>`;
+  return h;
+}
 function monthKeyOf(t){ return dayKey(t).slice(0,7); }
 function renderStats(){
   const v=document.getElementById("view");
@@ -1828,6 +1957,7 @@ function renderStats(){
     <div class="tile"><div class="k">Nuit · année ${y}</div><div class="v">${H(ytd.night)}</div><div class="s">${ytd.block?Math.round(ytd.night/ytd.block*100):0} % du block</div></div>
     <div class="tile"><div class="k">${MONTHS[m-1]} ${y}</div><div class="v">${H(by[months[11]].block)}</div><div class="s">+ ${H(planned)} prévues ce mois</div></div>
   </div>`;
+  h+=ftlHTML();
   // chart
   const W=360, Hh=170, padL=30, padB=22, padT=16, cw=(W-padL)/12;
   const maxV=Math.max(60,...months.map(k=>by[k].block));
