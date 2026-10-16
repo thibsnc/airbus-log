@@ -42,6 +42,38 @@ h2{margin:6px 2px 0;color:#fff;font-size:12px;letter-spacing:.14em;text-transfor
 .msg{color:#fff;text-align:center;opacity:.9;padding:40px 10px}
 footer{color:#fff;opacity:.7;font-size:11.5px;text-align:center}
 svg{display:block}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;color:#fff;font:inherit;font-weight:700;padding:8px 0;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--deep);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.none{margin:0;color:var(--muted);font-size:14px;padding:4px 2px}
+.mcal{padding:10px 6px 8px}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:0 6px 6px}
+.mhead b{font-size:17px;color:var(--deep)}
+.mnav{border:0;background:transparent;font-size:28px;line-height:1;color:var(--brand);width:40px;height:34px;cursor:pointer}
+.mwh,.mrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
+.mwh span{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-bottom:4px}
+.md{border:0;background:transparent;font:inherit;color:var(--deep);display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0 4px;cursor:pointer}
+.md .n{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px}
+.md.out{opacity:.3}
+.md.today .n{color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+.md.sel .n{background:var(--gold);color:var(--deep);box-shadow:0 5px 12px rgba(200,140,0,.45)}
+.md.today.sel .n{background:var(--red);color:#fff}
+.pi{height:15px;display:grid;place-items:center;color:var(--c)}
+.pi svg,.mleg svg{width:15px;height:15px}
+.pi.sol,.mleg .sol,.drow.sol .i{--c:#c58a00}
+.mleg{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;padding:8px 4px 0;border-top:1px solid var(--line);margin-top:4px;font-size:12px;color:var(--muted)}
+.mleg span{display:inline-flex;align-items:center;gap:4px}
+.mleg svg{color:var(--c)}
+.dayc{padding:0;overflow:hidden}
+.dh{padding:9px 16px;font-weight:800;color:var(--deep);background:linear-gradient(90deg,#fff5d6,#fde3a0);box-shadow:inset 0 -2px 0 var(--gold)}
+.dh.today{color:var(--red);box-shadow:inset 0 -2px 0 var(--red)}
+.dayc .none{padding:12px 16px}
+.drow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--line)}
+.dh+.drow{border-top:0}
+.drow .i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;background:color-mix(in srgb,var(--c) 15%,transparent)}
+.drow .t b{display:block;font-size:15px}
+.drow .t a{font-size:12.5px;font-weight:700;color:var(--brand);text-decoration:none}
+.drow .h{font-weight:800;font-variant-numeric:tabular-nums;color:var(--deep);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -66,9 +98,14 @@ const flights=s=>[...new Set((s.legs||[]).map(l=>l.flight).filter(Boolean))];
 const fr24=f=>`https://www.flightradar24.com/data/flights/${encodeURIComponent(f.toLowerCase())}`;
 const IC={vol:"✈︎",esc:"🛏",sol:"📘",off:"🏠"};
 if(!t){ app.innerHTML=`<p class="msg">Lien incomplet : demande-le à nouveau.</p>`; return; }
+let D=null;
 async function go(){
   let d; try{ const r=await fetch(API+"/api/family?t="+t+"&_="+Date.now(),{cache:"no-store"}); if(r.status===404){ app.innerHTML=`<p class="msg">Ce partage n'est plus actif.</p>`; return; } d=await r.json(); }
   catch(_){ app.innerHTML=`<p class="msg">Pas de connexion. Réessaie dans un moment.</p>`; return; }
+  D=d; render();
+}
+function render(){
+  const d=D; if(!d) return;
   const name=d.name||"", now=Date.now(), segs=(d.segs||[]).sort((a,b)=>a.start-b.start);
   document.title="Planning"+(name?" de "+name:"");
   const cur=segs.find(s=>s.start<=now&&s.end>now&&s.kind!=="off")||segs.find(s=>s.start<=now&&s.end>now);
@@ -93,9 +130,35 @@ async function go(){
   h+=`<section class="card now"><div class="k">${k}</div><div class="big">${big}</div>${sub?`<div class="sub">${sub}</div>`:""}
     ${track?`<a class="track" href="${fr24(track)}" target="_blank" rel="noopener">Suivre le vol ${esc(track)} ›</a>`:""}
     ${back?`<div class="home"><span>Retour à la maison</span><b>${esc(when(back.end))}</b></div>`:""}</section>`;
+  h+=`<div class="seg" role="group" aria-label="Affichage"><button data-v="list" aria-pressed="${view==="list"}">Liste</button><button data-v="cal" aria-pressed="${view==="cal"}">Calendrier</button></div>`;
+  h+= view==="cal" ? calHTML(segs,now) : listHTML(segs,now);
+  h+=`<footer>Planning partagé depuis ACI LOG · se met à jour tout seul</footer>`;
+  app.innerHTML=h;
+  app.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ view=b.dataset.v; try{ localStorage.setItem("fam:view",view); }catch(_){ } render(); });
+  app.querySelectorAll(".md").forEach(c=>c.onclick=()=>{ sel=c.dataset.day; const m=sel.slice(0,7); if(m!==month) month=m; render(); });
+  app.querySelectorAll(".mnav").forEach(b=>b.onclick=()=>{ month=shiftM(month,+b.dataset.d); sel=null; render(); });
+  const g=app.querySelector(".mcal"); if(g){ let sx=null,sy=null;
+    g.addEventListener("touchstart",e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
+    g.addEventListener("touchend",e=>{ if(sx==null) return; const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null;
+      if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){ month=shiftM(month,dx<0?1:-1); sel=null; render(); } }); }
+}
+let view="list"; try{ view=localStorage.getItem("fam:view")==="cal"?"cal":"list"; }catch(_){ }
+let month=dayK(Date.now()).slice(0,7), sel=null;
+const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const shiftM=(m,n)=>{ let y=+m.slice(0,4), mo=+m.slice(5,7)+n; while(mo<1){mo+=12;y--;} while(mo>12){mo-=12;y++;} return y+"-"+pad(mo); };
+const kStart=k=>Date.UTC(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10))-OFF;   // midnight in Nouméa
+const addD=(k,n)=>dayK(kStart(k)+n*864e5+36e5);
+const RANK={vol:4,esc:3,sol:2,off:1};
+const SVG={
+  vol:'<svg viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(90deg)"><path d="M21 15.5v-2l-8-5V3.8a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>',
+  esc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2M9 7.5v12M15 7.5v12"/></svg>',
+  sol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5V19c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5z"/><path d="M12 6v13.5"/></svg>',
+  off:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2.5 11h2.7v9h5v-6h3.6v6h5v-9h2.7z"/></svg>'};
+const onDay=(segs,k)=>{ const a=kStart(k), b=a+864e5; return segs.filter(s=>s.start<b&&s.end>a); };
+function listHTML(segs,now){
   const list=segs.filter(s=>s.end>now-864e5&&s.start<now+45*864e5);
-  if(list.length){
-    h+=`<h2>Les prochaines semaines</h2><section class="card list">`+list.map(s=>{
+  if(!list.length) return `<section class="card"><p class="none">Rien de prévu pour l'instant.</p></section>`;
+  return `<section class="card list">`+list.map(s=>{
       const multi=dayK(s.start)!==dayK(s.end-1);
       const dlab=multi?`${dshort(s.start)}<small>→ ${dshort(s.end-1)}</small>`:dshort(s.start);
       let b, sp;
@@ -107,9 +170,41 @@ async function go(){
       const cls=[s.kind]; if(s.start<=now&&s.end>now) cls.push("today"); else if(s.end<=now) cls.push("past");
       return `<div class="row ${cls.join(" ")}"><div class="d">${dlab}</div><div class="i">${IC[s.kind]}</div><div class="t"><b>${esc(b)}</b><span>${esc(sp)}</span></div></div>`;
     }).join("")+`</section>`;
+}
+// What happens on one day, in plain words: each flight with its times, layover, training, rest.
+function dayRows(segs,k){
+  const a=kStart(k), b=a+864e5, rows=[];
+  for(const s of onDay(segs,k)){
+    if(s.kind==="vol"){
+      if(s.start>=a) rows.push(["vol","Présentation à l'aéroport",hm(s.start)]);
+      for(const l of s.legs) if(l.dep>=a&&l.dep<b) rows.push(["vol",`${city(l.from)} → ${city(l.to)}`,`${hm(l.dep)} – ${hm(l.arr)}`,l.flight]);
+      const last=s.legs[s.legs.length-1];
+      if(s.end<b&&s.end>=a&&last&&last.to==="NOU") rows.push(["off","Retour à la maison",hm(s.end)]);
+    } else if(s.kind==="esc") rows.push(["esc",`Escale à ${city(s.at)}`,s.end<b?`jusqu'à ${hm(s.end)}`:"toute la journée"]);
+    else if(s.kind==="sol") rows.push(["sol",s.title,`${hm(Math.max(s.start,a))} – ${hm(Math.min(s.end,b-6e4))}`]);
+    else rows.push(["off","Repos","journée"]);
   }
-  h+=`<footer>Planning partagé depuis ACI LOG · se met à jour tout seul</footer>`;
-  app.innerHTML=h;
+  return rows;
+}
+function calHTML(segs,now){
+  const t=dayK(now), y=+month.slice(0,4), m=+month.slice(5,7), first=month+"-01";
+  const dow=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
+  let k=addD(first,-dow), h=`<section class="card mcal"><div class="mhead"><button class="mnav" data-d="-1" aria-label="Mois précédent">‹</button><b>${MONTHS[m-1]} ${y}</b><button class="mnav" data-d="1" aria-label="Mois suivant">›</button></div>
+    <div class="mwh">${["lun","mar","mer","jeu","ven","sam","dim"].map(w=>`<span>${w}</span>`).join("")}</div>`;
+  for(let w=0;w<6;w++){
+    const days=[]; for(let i=0;i<7;i++,k=addD(k,1)) days.push(k);
+    if(w===5&&+days[0].slice(5,7)!==m) break;
+    h+=`<div class="mrow">`+days.map(d=>{
+      const top=onDay(segs,d).sort((p,q)=>RANK[q.kind]-RANK[p.kind])[0];
+      const cls=["md"]; if(+d.slice(5,7)!==m) cls.push("out"); if(d===t) cls.push("today"); if(d===(sel||t)) cls.push("sel");
+      return `<button class="${cls.join(" ")}" data-day="${d}"><span class="n">${+d.slice(8)}</span><span class="pi ${top?top.kind:""}">${top?SVG[top.kind]:""}</span></button>`;
+    }).join("")+`</div>`;
+  }
+  h+=`<div class="mleg"><span class="vol">${SVG.vol}Vol</span><span class="esc">${SVG.esc}Escale</span><span class="sol">${SVG.sol}Formation</span><span class="off">${SVG.off}Repos</span></div></section>`;
+  const day=sel||t, rows=dayRows(segs,day);
+  h+=`<section class="card dayc"><div class="dh${day===t?" today":""}">${esc(dshort(kStart(day)+36e5))}${day===t?" · aujourd'hui":""}</div>`+
+    (rows.length?rows.map(r=>`<div class="drow ${r[0]}"><div class="i">${IC[r[0]]}</div><div class="t"><b>${esc(r[1])}</b>${r[3]?`<a href="${fr24(r[3])}" target="_blank" rel="noopener">Vol ${esc(r[3])} ›</a>`:""}</div><div class="h">${esc(r[2])}</div></div>`).join(""):`<p class="none">Rien de prévu ce jour-là (à la maison).</p>`)+`</section>`;
+  return h;
 }
 go(); setInterval(go,5*6e4);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) go(); });
