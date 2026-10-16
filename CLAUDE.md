@@ -36,7 +36,8 @@
   private key k (only SHA-256(k) is stored, Netlify Blobs store "family"). `famille.html#t=…` reads it (GET) and computes
   "where is he now / back home at". Synced on every roster change. Changes to it need a `[netlify]` deploy.
 - Version shown in Réglages: run `python3 scripts/bump.py "Short French description"` once per change set to index.html
-  (updates APP_VERSION, adds the line to CHANGELOG, shown when the owner taps his version, and writes version.json). The owner's app compares it with https://aci-log.netlify.app/version.json.
+  (updates APP_VERSION, adds the line to CHANGELOG, shown when the owner taps his version, and writes version.json).
+  Write it for colleagues: they see it in a "Nouveautés" sheet after updating. Add `--admin` for owner-only changes (hidden from them). The owner's app compares it with https://aci-log.netlify.app/version.json.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
   `out_dir` in the scratchpad), save its `ics` field to a scratch .ics file, run `python3 scripts/verify.py <file.ics>`.
   It must end with "OK" (no JavaScript error); read the per-flight times and the integrity report, fix anything wrong.

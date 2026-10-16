@@ -13,12 +13,13 @@ m = re.search(r'const APP_VERSION = \{ n:"(\d+)\.(\d+)", date:"[\d-]+" \};', s)
 n = f"{m.group(1)}.{int(m.group(2)) + 1}"
 today = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=11)).date().isoformat()
 s = s[:m.start()] + f'const APP_VERSION = {{ n:"{n}", date:"{today}" }};' + s[m.end():]
-text = " ".join(sys.argv[1:]).strip()
+admin = "--admin" in sys.argv
+text = " ".join(a for a in sys.argv[1:] if a != "--admin").strip()
 if not text:
     sys.exit("Give a short description: python3 scripts/bump.py \"Calendrier : …\"")
 c = re.search(r"const CHANGELOG = (\[.*?\]);\n", s)
 log = json.loads(c.group(1))
-log.insert(0, {"n": n, "date": today, "t": text})
+log.insert(0, {"n": n, "date": today, "t": text, **({"a": 1} if admin else {})})
 s = s[:c.start()] + "const CHANGELOG = " + json.dumps(log, ensure_ascii=False) + ";\n" + s[c.end():]
 open(p, "w", encoding="utf-8").write(s)
 json.dump({"n": n, "date": today}, open(os.path.join(ROOT, "version.json"), "w"))
