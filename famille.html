@@ -42,6 +42,11 @@ h2{margin:6px 2px 0;color:#fff;font-size:12px;letter-spacing:.14em;text-transfor
 .msg{color:#fff;text-align:center;opacity:.9;padding:40px 10px}
 footer{color:#fff;opacity:.7;font-size:11.5px;text-align:center}
 svg{display:block}
+.upd{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:5;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.18);color:#fff;font:inherit;font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.upd:active{transform:scale(.96)}
+header{padding-right:130px}
+.msg small{display:block;font-size:12px;opacity:.7;margin-top:6px}
+.retry{margin-top:14px;border:0;background:#fff;color:var(--deep);font:inherit;font-weight:800;padding:10px 18px;border-radius:999px}
 .fday{display:grid}
 .fday .dh{border-radius:18px 18px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(219,240,252,.9));box-shadow:inset 0 -2px 0 var(--gold);color:var(--deep)}
 .fday.today .dh{color:var(--red);box-shadow:inset 0 -3px 0 var(--red)}
@@ -100,11 +105,15 @@ svg{display:block}
 </style>
 </head>
 <body>
+<button class="upd" id="upd" type="button" onclick="location.replace(location.pathname+'?r='+Date.now()+location.hash)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Mettre à jour</button>
 <main id="app"><p class="msg">Chargement du planning…</p></main>
 <script>
 (()=>{
-const app=document.getElementById("app");
-const t=(location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)||[])[1];
+const app=document.getElementById("app"); let D=null;
+let t=(location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/)||[])[1];
+try{ if(t) localStorage.setItem("fam:t",t); else t=localStorage.getItem("fam:t")||""; }catch(_){ }
+const fail=(txt,detail)=>{ app.innerHTML=`<p class="msg">${txt}${detail?`<small>${esc(detail)}</small>`:""}<br><button class="retry" onclick="document.getElementById('upd').click()">Réessayer</button></p>`; };
+window.addEventListener("error",e=>{ if(!D) fail("La page n'a pas pu s'afficher.",e.message||""); });
 const API=/netlify\.app$/.test(location.hostname)?"":"https://aci-log.netlify.app";
 const CITY={NOU:"Nouméa",GEA:"Nouméa Magenta",NAN:"Nadi",SUV:"Suva",WLS:"Wallis",FUT:"Futuna",AKL:"Auckland",SYD:"Sydney",BNE:"Brisbane",MEL:"Melbourne",PPT:"Papeete",VLI:"Port-Vila",NRT:"Tokyo",HND:"Tokyo",KIX:"Osaka",CDG:"Paris",BKK:"Bangkok",SIN:"Singapour",HKG:"Hong Kong",LAX:"Los Angeles",LIF:"Lifou",MEE:"Maré",UVE:"Ouvéa",ILP:"Île des Pins",KNQ:"Koné",TOU:"Touho",KOC:"Koumac"};
 const city=c=>CITY[c]||c;
@@ -120,11 +129,15 @@ const route=s=>s.legs&&s.legs.length?[s.legs[0].from,...s.legs.map(l=>l.to)].map
 const flights=s=>[...new Set((s.legs||[]).map(l=>l.flight).filter(Boolean))];
 const fr24=f=>`https://www.flightradar24.com/data/flights/${encodeURIComponent(f.toLowerCase())}`;
 const IC={vol:"✈︎",esc:"🛏",sol:"📘",off:"🏠"};
-if(!t){ app.innerHTML=`<p class="msg">Lien incomplet : demande-le à nouveau.</p>`; return; }
-let D=null;
+if(!t){ fail("Lien incomplet : demande le lien à nouveau."); return; }
 async function go(){
-  let d; try{ const r=await fetch(API+"/api/family?t="+t+"&_="+Date.now(),{cache:"no-store"}); if(r.status===404){ app.innerHTML=`<p class="msg">Ce partage n'est plus actif.</p>`; return; } d=await r.json(); }
-  catch(_){ app.innerHTML=`<p class="msg">Pas de connexion. Réessaie dans un moment.</p>`; return; }
+  let d; try{
+    const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),15000);
+    const r=await fetch(API+"/api/family?t="+t+"&_="+Date.now(),{cache:"no-store",signal:ctl.signal}); clearTimeout(to);
+    if(r.status===404){ fail("Ce partage n'est plus actif, ou il n'a pas encore été envoyé depuis l'app."); return; }
+    if(!r.ok) throw new Error("serveur "+r.status);
+    d=await r.json(); }
+  catch(e){ if(!D) fail("Impossible de charger le planning (connexion ?).",e&&e.name==="AbortError"?"délai dépassé":(e&&e.message)||""); return; }
   D=d; render();
 }
 function render(){
@@ -230,6 +243,7 @@ function calHTML(segs,now){
   h+=dayBlock(segs,sel||t,t);
   return h;
 }
+addEventListener("hashchange",()=>location.reload());
 go(); setInterval(go,5*6e4);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) go(); });
 })();
