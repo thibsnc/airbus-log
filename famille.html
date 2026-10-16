@@ -42,6 +42,29 @@ h2{margin:6px 2px 0;color:#fff;font-size:12px;letter-spacing:.14em;text-transfor
 .msg{color:#fff;text-align:center;opacity:.9;padding:40px 10px}
 footer{color:#fff;opacity:.7;font-size:11.5px;text-align:center}
 svg{display:block}
+.fday{display:grid}
+.fday .dh{border-radius:18px 18px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(219,240,252,.9));box-shadow:inset 0 -2px 0 var(--gold);color:var(--deep)}
+.fday.today .dh{color:var(--red);box-shadow:inset 0 -3px 0 var(--red)}
+.fday .dbody{border-radius:0 0 18px 18px;padding:0;overflow:hidden;border-top:0}
+.fday .none{padding:12px 16px;font-weight:600}
+.drow.mini{padding:6px 16px}
+.drow.mini .i{width:34px;height:24px;background:transparent;font-size:14px}
+.drow.mini .t b{font-size:13.5px;color:var(--muted);font-weight:700}
+.drow.mini .h{font-size:14px;color:var(--muted)}
+.leg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr);align-items:center;gap:6px;padding:12px 16px;border-top:1px solid var(--line);border-left:5px solid var(--violet)}
+.leg .ap{display:grid;min-width:0}
+.leg .ap b{font-size:28px;font-weight:900;letter-spacing:.02em;color:var(--fg);line-height:1.05}
+.leg .ap small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leg .ap em{font-style:normal;font-weight:800;font-size:16px;color:var(--deep);font-variant-numeric:tabular-nums;margin-top:2px}
+.leg .ap.r{text-align:right}
+.leg .mid{display:grid;justify-items:center;gap:3px}
+.leg .mid span{font-size:12.5px;font-weight:800;color:var(--deep)}
+.leg .ln{display:flex;align-items:center;width:100%;gap:4px;color:var(--violet)}
+.leg .ln u{flex:1;border-top:2px dashed rgba(123,63,212,.35)}
+.leg .ln svg{width:18px;height:18px}
+.leg .mid a{font-size:12px;font-weight:700;color:var(--brand);text-decoration:none}
+.offrow{padding:12px 16px;text-align:center;font-size:20px;font-weight:800;letter-spacing:.35em;color:var(--red);border-top:1px solid var(--line);border-left:5px solid var(--red)}
+.dbody>:first-child{border-top:0}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:3px}
 .seg button{border:0;background:transparent;color:#fff;font:inherit;font-weight:700;padding:8px 0;border-radius:999px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:#fff;color:var(--deep);box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -155,37 +178,40 @@ const SVG={
   sol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5V19c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5z"/><path d="M12 6v13.5"/></svg>',
   off:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2.5 11h2.7v9h5v-6h3.6v6h5v-9h2.7z"/></svg>'};
 const onDay=(segs,k)=>{ const a=kStart(k), b=a+864e5; return segs.filter(s=>s.start<b&&s.end>a); };
+// List view, like the app: one block per day (today first), each flight as a small card.
 function listHTML(segs,now){
-  const list=segs.filter(s=>s.end>now-864e5&&s.start<now+45*864e5);
-  if(!list.length) return `<section class="card"><p class="none">Rien de prévu pour l'instant.</p></section>`;
-  return `<section class="card list">`+list.map(s=>{
-      const multi=dayK(s.start)!==dayK(s.end-1);
-      const dlab=multi?`${dshort(s.start)}<small>→ ${dshort(s.end-1)}</small>`:dshort(s.start);
-      let b, sp;
-      if(s.kind==="vol"){ b=route(s); const f=flights(s); sp=`Présentation ${hm(s.start)} · retour à la maison vers ${multi?dshort(s.end)+" ":""}${hm(s.end)}${f.length?` · ${f.join(", ")}`:""}`;
-        if(s.legs.length&&s.legs[s.legs.length-1].to!=="NOU") sp=`Présentation ${hm(s.start)} · arrivée ${hm(s.legs[s.legs.length-1].arr)}${f.length?` · ${f.join(", ")}`:""}`; }
-      else if(s.kind==="esc"){ b=`Escale à ${city(s.at)}`; sp=multi?`${Math.max(1,Math.round((s.end-s.start)/864e5))} nuit${Math.round((s.end-s.start)/864e5)>1?"s":""} sur place`:`Jusqu'à ${hm(s.end)}`; }
-      else if(s.kind==="sol"){ b=s.title; sp=`${hm(s.start)} – ${hm(s.end)}`; }
-      else { b="Repos"; sp=multi?`${Math.round((s.end-s.start)/864e5)} jours`:"Journée de repos"; }
-      const cls=[s.kind]; if(s.start<=now&&s.end>now) cls.push("today"); else if(s.end<=now) cls.push("past");
-      return `<div class="row ${cls.join(" ")}"><div class="d">${dlab}</div><div class="i">${IC[s.kind]}</div><div class="t"><b>${esc(b)}</b><span>${esc(sp)}</span></div></div>`;
-    }).join("")+`</section>`;
+  const t=dayK(now), last=segs.length?dayK(Math.max(...segs.map(s=>s.end))-1):t;
+  let h="";
+  for(let k=t,i=0; k<=last&&i<60; k=addD(k,1),i++) h+=dayBlock(segs,k,t);
+  return h||`<section class="card"><p class="none">Rien de prévu pour l'instant.</p></section>`;
 }
-// What happens on one day, in plain words: each flight with its times, layover, training, rest.
-function dayRows(segs,k){
-  const a=kStart(k), b=a+864e5, rows=[];
+function legCard(l){
+  const m=Math.round((l.arr-l.dep)/6e4);
+  return `<div class="leg"><div class="ap"><b>${esc(l.from)}</b><small>${esc(city(l.from))}</small><em>${hm(l.dep)}</em></div>
+    <div class="mid"><span>${Math.floor(m/60)}h${pad(m%60)}</span><i class="ln"><u></u>${SVG.vol}<u></u></i>${l.flight?`<a href="${fr24(l.flight)}" target="_blank" rel="noopener">${esc(l.flight)} ›</a>`:""}</div>
+    <div class="ap r"><b>${esc(l.to)}</b><small>${esc(city(l.to))}</small><em>${hm(l.arr)}</em></div></div>`;
+}
+// One day: presentation time, flights, back home, layover, training, rest.
+function dayBody(segs,k){
+  const a=kStart(k), b=a+864e5, out=[];
+  const small=(kind,txt,time)=>`<div class="drow ${kind} mini"><div class="i">${IC[kind]}</div><div class="t"><b>${esc(txt)}</b></div><div class="h">${esc(time)}</div></div>`;
   for(const s of onDay(segs,k)){
     if(s.kind==="vol"){
-      if(s.start>=a) rows.push(["vol","Présentation à l'aéroport",hm(s.start)]);
-      for(const l of s.legs) if(l.dep>=a&&l.dep<b) rows.push(["vol",`${city(l.from)} → ${city(l.to)}`,`${hm(l.dep)} – ${hm(l.arr)}`,l.flight]);
+      if(s.start>=a) out.push(small("vol","Présentation à l'aéroport",hm(s.start)));
+      for(const l of s.legs) if(l.dep>=a&&l.dep<b) out.push(legCard(l));
       const last=s.legs[s.legs.length-1];
-      if(s.end<b&&s.end>=a&&last&&last.to==="NOU") rows.push(["off","Retour à la maison",hm(s.end)]);
-    } else if(s.kind==="esc") rows.push(["esc",`Escale à ${city(s.at)}`,s.end<b?`jusqu'à ${hm(s.end)}`:"toute la journée"]);
-    else if(s.kind==="sol") rows.push(["sol",s.title,`${hm(Math.max(s.start,a))} – ${hm(Math.min(s.end,b-6e4))}`]);
-    else rows.push(["off","Repos","journée"]);
+      if(s.end<b&&s.end>=a&&last&&last.to==="NOU") out.push(small("off","Retour à la maison",hm(s.end)));
+    } else if(s.kind==="esc") out.push(`<div class="drow esc"><div class="i">${IC.esc}</div><div class="t"><b>Escale à ${esc(city(s.at))}</b></div><div class="h">${s.end<b?"jusqu'à "+hm(s.end):"toute la journée"}</div></div>`);
+    else if(s.kind==="sol") out.push(`<div class="drow sol"><div class="i">${IC.sol}</div><div class="t"><b>${esc(s.title)}</b></div><div class="h">${hm(Math.max(s.start,a))} – ${hm(Math.min(s.end,b-6e4))}</div></div>`);
+    else if(!out.some(x=>x.includes('class="offrow"'))) out.push(`<div class="offrow">Repos</div>`);
   }
-  return rows;
+  return out.join("")||`<p class="none">À la maison</p>`;
 }
+function dayBlock(segs,k,t){
+  return `<section class="fday${k===t?" today":""}"><div class="dh">${esc(dlong(k))}${k===t?" · aujourd'hui":""}</div><div class="card dbody">${dayBody(segs,k)}</div></section>`;
+}
+const WDL=["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+const dlong=k=>{ const d=nd(kStart(k)+36e5); return `${WDL[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].toLowerCase()}`; };
 function calHTML(segs,now){
   const t=dayK(now), y=+month.slice(0,4), m=+month.slice(5,7), first=month+"-01";
   const dow=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
@@ -201,9 +227,7 @@ function calHTML(segs,now){
     }).join("")+`</div>`;
   }
   h+=`<div class="mleg"><span class="vol">${SVG.vol}Vol</span><span class="esc">${SVG.esc}Escale</span><span class="sol">${SVG.sol}Formation</span><span class="off">${SVG.off}Repos</span></div></section>`;
-  const day=sel||t, rows=dayRows(segs,day);
-  h+=`<section class="card dayc"><div class="dh${day===t?" today":""}">${esc(dshort(kStart(day)+36e5))}${day===t?" · aujourd'hui":""}</div>`+
-    (rows.length?rows.map(r=>`<div class="drow ${r[0]}"><div class="i">${IC[r[0]]}</div><div class="t"><b>${esc(r[1])}</b>${r[3]?`<a href="${fr24(r[3])}" target="_blank" rel="noopener">Vol ${esc(r[3])} ›</a>`:""}</div><div class="h">${esc(r[2])}</div></div>`).join(""):`<p class="none">Rien de prévu ce jour-là (à la maison).</p>`)+`</section>`;
+  h+=dayBlock(segs,sel||t,t);
   return h;
 }
 go(); setInterval(go,5*6e4);
