@@ -1,5 +1,6 @@
 // ACI LOG service worker: app shell available offline, always fresh when online.
-const CACHE = "aci-log-v5";
+const CACHE = "aci-log-v6";
+const OCR_CACHE = "aci-ocr-v1"; // photo reader (tesseract.js): kept across app updates, it never changes for a given version
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/apple-touch-icon.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -9,7 +10,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== OCR_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -23,6 +24,18 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) {
+    // Photo reader (tesseract.js, its engine and English data, all versioned on jsDelivr): cache-first, so reading a
+    // recap photo works in flight once it has been loaded once with internet.
+    if (url.hostname === "cdn.jsdelivr.net" && /tesseract/.test(url.pathname)) {
+      e.respondWith(caches.open(OCR_CACHE).then(async (c) => {
+        const hit = await c.match(req);
+        if (hit) return hit;
+        const res = await fetch(req);
+        if (res.ok || res.type === "opaque") c.put(req, res.clone());
+        return res;
+      }));
+      return;
+    }
     // Google Fonts: cache-first so text renders offline. API calls go straight to the network.
     if (/fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
       e.respondWith(caches.open(CACHE).then(async (c) => {
