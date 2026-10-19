@@ -15,7 +15,7 @@
 <title>ACI LOG</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: crew-app shell — brand bar + sticky day strip (bandeau) on top, day-grouped duty list below where each row unfolds; second view is a month calendar; bottom tab bar; palettes taken from the tail livery (royal blue, hibiscus red, gold, lagoon). */
 :root{
@@ -901,10 +901,10 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.43", date:"2026-10-17" };
+const APP_VERSION = { n:"1.44", date:"2026-10-19" };
 // Changes, newest first. scripts/bump.py "text" adds one line per version (--admin: owner-only, hidden from colleagues).
 const HAD_CACHE = (()=>{ try{ return !!localStorage.getItem("abl:cache"); }catch(_){ return false; } })(); // this device used the app before this load
-const CHANGELOG = [{"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version"}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo"}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone"}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)"}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)"}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour"}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)"}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)"}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation"}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité"}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol"}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour"}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous"}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide"}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction"}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)"}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage"}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix"}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée"}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or"}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours"}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien"}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape"}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service"}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée"}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher"}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px"}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs"}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle"}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP"}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version"}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende"}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »"}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois"}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée"}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)"}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »"}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1}];
+const CHANGELOG = [{"n": "1.44", "date": "2026-10-19", "t": "L'app s'ouvre sans internet (en vol, Wi-Fi de bord) avec le dernier roster ; heures de nuit = 18:00–06:00 à l'heure du premier départ de la journée"}, {"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version"}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo"}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone"}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)"}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)"}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour"}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)"}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)"}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation"}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité"}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol"}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour"}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous"}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide"}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction"}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)"}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage"}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix"}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée"}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or"}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours"}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien"}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape"}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service"}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée"}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher"}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px"}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs"}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle"}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP"}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version"}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende"}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »"}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois"}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée"}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)"}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »"}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1}];
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1218,7 +1218,7 @@ function summaryHTML(){
   const fl=state.events.filter(e=>e.start>=ms&&e.start<me&&isOperated(e));
   const tft=fl.reduce((n,e)=>n+blockOf(e).min,0);
   // Night: flown so far this month / planned for the whole month (flown + still to fly).
-  const nowT=Date.now(), nightOf=e=>{ const b=blockOf(e); return nightMinutes(e.from,e.to,b.dep,b.arr)||0; };
+  const nowT=Date.now(), nightOf=e=>{ const b=blockOf(e); return nightOfLeg(e,b.dep,b.arr); };
   const nightMin=fl.filter(e=>e.arr<=nowT).reduce((n,e)=>n+nightOf(e),0), nightPlan=fl.reduce((n,e)=>n+nightOf(e),0);
   h+=`<div class="stats"><div class="stat night tap" id="fl-open" role="button" tabindex="0" aria-label="Voir les vols de ${MONTHS[m-1]}"><div class="k" title="${MONTHS[m-1]}">Vols</div><div class="v" title="Étapes (legs) / vols (journées de vol, aller et retour compris)">${fl.length}<span class="of">/${dutiesOf(fl).length}</span></div><div class="sub">étapes / vols</div></div><div class="stat"><div class="k">Block</div><div class="v">${Math.floor(tft/60)}h${pad(tft%60)}</div></div><div class="stat night"><div class="k">Nuit</div><div class="v" title="Réalisées / prévues ce mois-ci">${Math.floor(nightMin/60)}h${pad(nightMin%60)}<span class="of">/${Math.floor(nightPlan/60)}h${pad(nightPlan%60)}</span></div><div class="sub">réalisées / prévues</div></div></div>${integBadge()}`;
   return h;
@@ -1491,10 +1491,11 @@ function ltURL(e,t){
   const pic = cap==="PIC" ? me : cpt, sic = cap==="SIC" ? me : fo;
   if(pic) o.flight_selectedCrewPIC=crewDisplay(pic, pic===me);
   if(sic) o.flight_selectedCrewSIC=crewDisplay(sic, sic===me);
-  // Takeoff and landing counted for the pilot flying, day or night from the sun at each airport.
+  // Takeoff and landing counted for the pilot flying; night = 18:00–06:00, local time of the duty's first departure.
   if(d.pf){
-    if(isNightAt(e.from,t.off)) o.flight_nightTakeoffs=1; else o.flight_dayTakeoffs=1;
-    if(isNightAt(e.to,t.on)) o.flight_nightLandings=1; else o.flight_dayLandings=1;
+    const noff=dutyOffset(e);
+    if(isNightOff(t.off,noff)) o.flight_nightTakeoffs=1; else o.flight_dayTakeoffs=1;
+    if(isNightOff(t.on,noff)) o.flight_nightLandings=1; else o.flight_dayLandings=1;
   }
   if(d.app) o.flight_selectedApproach1=`1;${d.app};${(d.rwy||"").toUpperCase()};${icao(e.to)}`;
   // Duty: on duty at the first leg's check-in, off duty at the last leg's check-out.
@@ -1761,6 +1762,18 @@ function sunElev(t,lat,lon){
   return Math.asin(Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(H))/RAD;
 }
 function vec([la,lo]){ la*=RAD; lo*=RAD; return [Math.cos(la)*Math.cos(lo),Math.cos(la)*Math.sin(lo),Math.sin(la)]; }
+// Night (owner's rule): block time between 18:00 and 06:00 in the local time of the duty's FIRST departure
+// (Nouméa for a NOU–BNE–NOU day, on the BNE–NOU leg too). Also used for night takeoffs/landings sent to LogTen.
+const NIGHT_FROM=18*60, NIGHT_TO=6*60;
+let _dutyMemo={ev:null,map:null};
+function dutyOffset(e){
+  if(_dutyMemo.ev!==state.events){ const m=new Map(); for(const g of dutiesOf(state.events.filter(x=>x.cat==="vol"||x.cat==="mep"))) for(const x of g) m.set(x.id,g[0]); _dutyMemo={ev:state.events,map:m}; }
+  const f=_dutyMemo.map.get(e.id)||e;
+  const o=tzOffsetMin(f.from,f.dep); if(o!=null) return o;
+  const i=infoOffset(f.info&&f.info.Departure); return i!=null?i:660;
+}
+const isNightOff=(ts,off)=>{ const m=(((Math.floor(ts/6e4)+off)%1440)+1440)%1440; return m>=NIGHT_FROM||m<NIGHT_TO; };
+function nightOfLeg(e,dep,arr){ if(!(arr>dep)) return 0; const off=dutyOffset(e); let n=0; for(let t=dep;t+3e4<arr;t+=6e4) if(isNightOff(t+3e4,off)) n++; return n; }
 function nightMinutes(from,to,dep,arr){
   const A=COORD[from], B=COORD[to]; if(!A||!B||!(arr>dep)) return null;
   const a=vec(A), b=vec(B); const om=Math.acos(Math.min(1,Math.max(-1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2])));
@@ -1858,7 +1871,7 @@ function openInteg(){
   s.hidden=false; document.getElementById("scrim").hidden=false;
 }
 const fkey=(flight,dep,from)=>(flight+"-"+ymd(dep).replace(/-/g,"")+"-"+from).replace(/[^A-Za-z0-9_\-]/g,"");
-function flightRecord(e){ const b=blockOf(e); return { flight:e.flight, from:e.from, to:e.to, dep:e.dep, arr:e.arr, reg:fmtReg(e.reg), role:e.role||"", block:b.min, night:nightMinutes(e.from,e.to,b.dep,b.arr), real:b.real }; }
+function flightRecord(e){ const b=blockOf(e); return { flight:e.flight, from:e.from, to:e.to, dep:e.dep, arr:e.arr, reg:fmtReg(e.reg), role:e.role||"", block:b.min, night:nightOfLeg(e,b.dep,b.arr), real:b.real }; }
 let archive=new Map(Object.entries(store.get("flights")||{}));
 function allFlights(){
   const m=new Map(archive);
@@ -2029,7 +2042,7 @@ function renderStats(){
   h+=`<div class="box"><h3>Détail par mois</h3><div class="tbl"><table><thead><tr><th>Mois</th><th>Vols</th><th>Block</th><th>Nuit</th></tr></thead><tbody>`+
     months.slice().reverse().map(k=>{ const d=by[k]; return `<tr class="${k===months[11]?"cur":""}"><td>${MONTHS[+k.slice(5)-1]} ${k.slice(0,4)}</td><td>${d.n}</td><td>${H(d.block)}</td><td>${H(d.night)}${d.unknown?"*":""}</td></tr>`; }).join("")+
     `</tbody><tfoot><tr><td>12 mois</td><td>${roll.n}</td><td>${H(roll.block)}</td><td>${H(roll.night)}</td></tr></tfoot></table></div>
-    <p>Nuit estimée : temps passé entre la fin et le début du crépuscule civil (soleil à plus de 6° sous l'horizon), calculé le long de la route.${months.some(k=>by[k].unknown)?" * Un aéroport inconnu de l'app : sa nuit n'est pas comptée.":""}</p>
+    <p>Nuit : temps bloc entre 18:00 et 06:00, à l'heure locale du premier départ de la journée de service (par exemple l'heure de Nouméa pour tout un NOU–BNE–NOU).</p>
     <p>${first?`Historique disponible depuis le ${esc(longDate(dayKey(first)).toLowerCase())} ${new Date(first).getUTCFullYear()}. Les vols sont gardés au fil des relectures, l'historique s'allonge donc avec le temps.`:"Aucun vol réalisé pour l'instant. Les vols s'ajoutent ici une fois terminés."}</p></div>`;
   h+=`</div>`;
   v.innerHTML=h;
@@ -2454,7 +2467,7 @@ function rosterLinkInfo(text){
 }
 async function fetchLink(url){
   let r;
-  try{ r=await fetch(RELAY+"/api/roster",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url}),cache:"no-store"}); }
+  try{ r=await fetchT(RELAY+"/api/roster",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url}),cache:"no-store"}); }
   catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
   if(r.status===400){ const err=new Error("bad link"); err.code="badlink"; throw err; }
   if(!r.ok){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
@@ -2521,7 +2534,7 @@ function nowLine(list){
 }
 async function relayRoster(url){
   let r;
-  try{ r=await fetch(RELAY+"/api/roster",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url}),cache:"no-store"}); }
+  try{ r=await fetchT(RELAY+"/api/roster",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url}),cache:"no-store"}); }
   catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
   if(r.status===400){ const err=new Error("bad link"); err.code="badlink"; throw err; }
   if(!r.ok){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
@@ -2614,7 +2627,7 @@ function wxIdsLocal(){
   return [...new Set(["NWWW",...Object.keys(WX_FAV),...st.list,...soon].filter(c=>/^[A-Z]{4}$/.test(c)))].sort().slice(0,20);
 }
 async function fetchWxLink(){
-  const d=await (await fetch(RELAY+"/api/wx?ids="+wxIdsLocal().join(","),{cache:"no-store"})).json();
+  const d=await (await fetchT(RELAY+"/api/wx?ids="+wxIdsLocal().join(","),{cache:"no-store"})).json();
   if(d.error) throw new Error(d.error);
   wx.metars=parseMetars(d.metar); wx.tafs=parseTafs(d.taf); wx.fetchedAt=d.fetchedAt||new Date().toISOString();
   store.set("wx",{metars:wx.metars,tafs:wx.tafs,fetchedAt:wx.fetchedAt});
@@ -2632,9 +2645,12 @@ async function decryptData(env,pass){
   try{ const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64(env.iv)},k,b64(env.ct)); return JSON.parse(new TextDecoder().decode(pt)); }
   catch(e){ const err=new Error("wrong key"); err.code=401; throw err; }
 }
+// fetch that gives up: in flight or on a captive Wi-Fi the network can hang instead of failing.
+function fetchT(url,opts={},ms=20000){ const c=new AbortController(), t=setTimeout(()=>c.abort(),ms);
+  return fetch(url,{...opts,signal:c.signal}).finally(()=>clearTimeout(t)); }
 async function fetchData(key){
   let r;
-  try{ r=await fetch("data.json?t="+Date.now(),{cache:"no-store"}); }catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
+  try{ r=await fetchT("data.json?t="+Date.now(),{cache:"no-store"}); }catch(e){ const err=new Error(e.message||"offline"); err.code="net"; throw err; }
   if(r.status===404){ const err=new Error("data.json absent"); err.code=404; throw err; }
   if(!r.ok){ const err=new Error("HTTP "+r.status); err.code=r.status; throw err; }
   const d=await decryptData(await r.json(),key||apiKey);
@@ -2733,7 +2749,7 @@ fitTabBar(); addEventListener("resize",fitTabBar); addEventListener("orientation
 // Is a newer app version online? Reads the published page itself, bypassing every cache.
 async function onlineVersion(){
   if(IN_CLAUDE) return null;
-  try{ const r=await fetch("./?v="+Date.now(),{cache:"no-store"}); if(!r.ok) return null;
+  try{ const r=await fetchT("./?v="+Date.now(),{cache:"no-store"},10000); if(!r.ok) return null;
     const m=/const APP_VERSION = \{ n:"([\d.]+)"/.exec(await r.text()); return m&&m[1]!==APP_VERSION.n ? m[1] : null; }catch(_){ return null; }
 }
 function reloadFor(v){ toast(`Nouvelle version ${v} : rechargement…`); setTimeout(()=>location.reload(),700); }
@@ -3006,6 +3022,7 @@ try{ new MutationObserver(()=>setTimeout(drawBg,30)).observe(document.documentEl
 document.body.dataset.pal=state.pal;
 const cached=store.get("cache");
 if(cached&&cached.ics) load(cached.ics,cached.fetchedAt,true); else render();
+if(navigator.onLine===false&&cached&&cached.ics) setTimeout(()=>toast("Hors ligne : roster gardé sur le téléphone"),900);
 function measureTop(){ const t=document.querySelector(".top"); if(t) document.documentElement.style.setProperty("--toph",t.getBoundingClientRect().height+"px"); }
 addEventListener("resize",measureTop); new ResizeObserver(measureTop).observe(document.querySelector(".top"));
 measureTop(); drawBg(); if(document.fonts) document.fonts.ready.then(drawBg);

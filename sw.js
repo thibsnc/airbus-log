@@ -1,5 +1,5 @@
 // ACI LOG service worker: app shell available offline, always fresh when online.
-const CACHE = "aci-log-v4";
+const CACHE = "aci-log-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/apple-touch-icon.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -14,6 +14,10 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// The app must open in flight and on captive Wi-Fi, where the network can hang instead of failing.
+// App files: served at once from the phone (cache first), then refreshed in the background for next time;
+// the page itself checks for a newer version and reloads when one is online.
+// Requests with a query string (data.json?t=…, the version check ./?v=…) and API calls go to the network.
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -25,19 +29,26 @@ self.addEventListener("fetch", (e) => {
         const hit = await c.match(req);
         if (hit) return hit;
         const res = await fetch(req);
-        c.put(req, res.clone());
+        if (res.ok || res.type === "opaque") c.put(req, res.clone());
         return res;
       }));
     }
     return;
   }
-  // App files: network first, revalidated with the server every time (GitHub Pages lets browsers keep
-  // pages 10 min otherwise, so a new version could wait), cache as fallback offline.
-  e.respondWith(
-    fetch(req, { cache: "no-cache" })
-      .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
-      .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
-  );
+  if (url.search || url.pathname.includes("/api/")) return;
+  const nav = req.mode === "navigate";
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    const hit = await c.match(req, { ignoreSearch: true }) || (nav && (await c.match("./index.html") || await c.match("./")));
+    const net = fetch(req, { cache: "no-cache" }).then((res) => {
+      if (res.ok && res.type === "basic") c.put(req, res.clone());
+      return res;
+    });
+    if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+    // nothing on the phone yet: network, but never wait forever
+    return Promise.race([net, new Promise((_, ko) => setTimeout(() => ko(new Error("timeout")), 15000))])
+      .catch(async () => (await c.match("./index.html")) || Response.error());
+  })());
 });
 
 // Flight reminders (Web Push, see netlify/functions/push.mjs).
