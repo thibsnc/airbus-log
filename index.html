@@ -901,10 +901,10 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.45", date:"2026-10-19" };
+const APP_VERSION = { n:"1.46", date:"2026-10-19" };
 // Changes, newest first. scripts/bump.py "text" adds one line per version (--admin: owner-only, hidden from colleagues).
 const HAD_CACHE = (()=>{ try{ return !!localStorage.getItem("abl:cache"); }catch(_){ return false; } })(); // this device used the app before this load
-const CHANGELOG = [{"n": "1.45", "date": "2026-10-19", "t": "Photo LogTen : lit la page AOC STATUS du MCDU (OUT, OFF, ON, IN en Zulu), même photo prise de travers"}, {"n": "1.44", "date": "2026-10-19", "t": "L'app s'ouvre sans internet (en vol, Wi-Fi de bord) avec le dernier roster ; heures de nuit = 18:00–06:00 à l'heure du premier départ de la journée"}, {"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version"}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo"}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone"}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)"}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)"}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour"}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)"}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)"}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation"}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité"}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol"}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour"}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous"}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide"}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction"}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)"}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage"}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix"}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée"}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or"}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours"}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien"}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape"}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service"}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée"}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher"}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px"}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs"}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle"}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP"}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version"}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende"}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »"}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois"}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée"}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)"}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »"}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1}];
+const CHANGELOG = [{"n": "1.46", "date": "2026-10-19", "t": "Photo LogTen : l'écran du MCDU est trouvé et recadré tout seul, les heures sont vérifiées avec BLOCK et FLIGHT"}, {"n": "1.45", "date": "2026-10-19", "t": "Photo LogTen : lit la page AOC STATUS du MCDU (OUT, OFF, ON, IN en Zulu), même photo prise de travers"}, {"n": "1.44", "date": "2026-10-19", "t": "L'app s'ouvre sans internet (en vol, Wi-Fi de bord) avec le dernier roster ; heures de nuit = 18:00–06:00 à l'heure du premier départ de la journée"}, {"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version"}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo"}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone"}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)"}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)"}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour"}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)"}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)"}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation"}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité"}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol"}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour"}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous"}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide"}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction"}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)"}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage"}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix"}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée"}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or"}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours"}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien"}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape"}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service"}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée"}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher"}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px"}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs"}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle"}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP"}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version"}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende"}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »"}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois"}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée"}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)"}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »"}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1}];
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1566,6 +1566,8 @@ function ocrParse(text,e){
       for(let j=1;j<4;j++){ let t=nearTs(w[j],ts[j-1]); if(t<ts[j-1]) t+=864e5; ts.push(t); }
       if(ts.every((t,j)=>!j||t>ts[j-1]) && Math.abs((ts[3]-ts[0])-(e.arr-e.dep))<=2*36e5){ ["out","off","on","in"].forEach((k,j)=>raw[k]=w[j]); break; } }
   }
+  const sol=ocrSolve(text,e);
+  if(sol&&sol.match>=1) ["out","off","on","in"].forEach((k,j)=>raw[k]=sol.q[j]);
   // The four Zulu times always come in this order: OUT < OFF < ON < IN. When the labels did not give a clean set
   // (columns read out of order), take the Zulu times that fit this flight and sort them.
   const chrono=o=>{ if(["out","off","on","in"].some(k=>o[k]==null)) return false; let p=nearTs(o.out,e.dep);
@@ -1580,9 +1582,10 @@ function ocrParse(text,e){
     if(pick) ["out","off","on","in"].forEach((k,j)=>raw[k]=pick[j].m);
   }
   // The photo names its route (ORIG/DEST): say so when it is not this flight.
-  const od=/\b([A-Z]{4})\s*\/\s*([A-Z]{4})\b/.exec(text);
+  const od=[...text.matchAll(/\b([A-Z]{4})\s*\/\s*([A-Z]{4})\b/g)].find(m=>m[1]!=="ORIG"&&m[2]!=="DEST");
   const nd=(x,y)=>[...x].filter((c,i)=>c!==y[i]).length; // one misread letter is tolerated
-  const other = od && (nd(od[1],icao(e.from))>1||nd(od[2],icao(e.to))>1) ? `${od[1]}/${od[2]}` : null;
+  const known=new Set(Object.values(ICAO)); // garbage from an upside-down reading is never a known airport pair
+  const other = od && known.has(od[1]) && known.has(od[2]) && (nd(od[1],icao(e.from))>1||nd(od[2],icao(e.to))>1) ? `${od[1]}/${od[2]}` : null;
   // UTC or local time: keep whichever reading fits the flight.
   const refs={out:e.dep,off:e.dep,on:e.arr,in:e.arr};
   const offD=infoOffset(e.info&&e.info.Departure), offA=infoOffset(e.info&&e.info.Arrival);
@@ -1598,38 +1601,98 @@ function ocrParse(text,e){
 }
 let ocrWorker=null;
 function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=()=>ko(new Error("script")); document.head.appendChild(s); }); }
-async function ocrRead(file,onStep){
+// Readings to try, best first. A cockpit screen (MCDU AOC STATUS) is often shot sideways among lots of panel:
+// the screen is found from its green text, cropped, put upright (text-line direction tells the axis) and read
+// line by line, then as scattered text; the whole photo in the four orientations comes last.
+function ocrPasses(img){
+  const W0=img.naturalWidth, H0=img.naturalHeight, out=[];
+  const k=Math.min(1,1000/Math.max(W0,H0)), sw=Math.round(W0*k), sh=Math.round(H0*k);
+  const sc=document.createElement("canvas"); sc.width=sw; sc.height=sh; const sg=sc.getContext("2d"); sg.drawImage(img,0,0,sw,sh);
+  const px=sg.getImageData(0,0,sw,sh).data, mask=new Uint8Array(sw*sh);
+  for(let i=0,j=0;i<px.length;i+=4,j++){ const r=px[i],g=px[i+1],b=px[i+2]; if(g-Math.max(r,b)>40&&g>90) mask[j]=1; }
+  const cs=Math.max(12,Math.round(Math.max(sw,sh)/30)), gw=Math.floor(sw/cs), gh=Math.floor(sh/cs), cell=new Float32Array(gw*gh);
+  for(let y=0;y<gh*cs;y++) for(let x=0;x<gw*cs;x++) if(mask[y*sw+x]) cell[Math.floor(y/cs)*gw+Math.floor(x/cs)]++;
+  let best=0, bi=0, bj=0;
+  for(let i=0;i+2<gh;i++) for(let j=0;j+2<gw;j++){ let v=0; for(let a=0;a<3;a++) for(let b=0;b<3;b++) v+=cell[(i+a)*gw+j+b]; if(v>best){ best=v; bi=i; bj=j; } }
+  const full={x:0,y:0,w:W0,h:H0};
+  let rots=[0,90,270,180], box=null;
+  if(best>40){
+    const cy=(bi+1.5)*cs, cx=(bj+1.5)*cs, R=0.22*Math.max(sw,sh); let x0=sw,x1=0,y0=sh,y1=0;
+    for(let y=Math.max(0,Math.floor(cy-R));y<Math.min(sh,cy+R);y++) for(let x=Math.max(0,Math.floor(cx-R));x<Math.min(sw,cx+R);x++) if(mask[y*sw+x]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+    if(x1>x0&&y1>y0){
+      // text lines: the profile across them goes on/off much more than the profile along them
+      // a scan line along the text crosses many character strokes, one across the lines only a few
+      const runs=(along)=>{ let t=0,n=0; const A=along?y1-y0+1:x1-x0+1, B=along?x1-x0+1:y1-y0+1;
+        for(let i=0;i<A;i++){ let c=0,prev=0,any=0; for(let j=0;j<B;j++){ const v=along?mask[(y0+i)*sw+x0+j]:mask[(y0+j)*sw+x0+i]; if(v!==prev) c++; prev=v; any|=v; } if(any){ t+=c; n++; } }
+        return n?t/n:0; };
+      const horizontal=runs(true)>=runs(false);
+      const pw=(x1-x0)*0.3+8, ph=(y1-y0)*0.3+8;
+      const X0=Math.max(0,(x0-pw)/k), Y0=Math.max(0,(y0-ph)/k), X1=Math.min(W0,(x1+pw)/k), Y1=Math.min(H0,(y1+ph)/k);
+      box={x:X0,y:Y0,w:X1-X0,h:Y1-Y0};
+      const ax=horizontal?[0,180,90,270]:[90,270,0,180];
+      for(const rot of ax.slice(0,2)) for(const psm of ["6","11"]) out.push({rect:box,rot,psm,max:1600});
+      for(const rot of ax.slice(2)) out.push({rect:box,rot,psm:"6",max:1600});
+      rots=horizontal?[0,180,90,270]:[90,270,0,180];
+    }
+  }
+  for(const rot of rots) out.push({rect:full,rot,psm:"11",max:2400});
+  return out.map(p=>({...p,draw:()=>{
+    const r=p.rect, kk=Math.min(2.5,p.max/Math.max(r.w,r.h)), w=Math.round(r.w*kk), h=Math.round(r.h*kk), side=p.rot%180!==0;
+    const c=document.createElement("canvas"); c.width=side?h:w; c.height=side?w:h;
+    const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.filter="grayscale(1) contrast(1.4)";
+    g.translate(c.width/2,c.height/2); g.rotate(-p.rot*Math.PI/180); g.drawImage(img,r.x,r.y,r.w,r.h,-w/2,-h/2,w,h);
+    return c; }}));
+}
+async function ocrRead(file,onStep,e){
   if(!window.Tesseract){ onStep("Chargement du lecteur (première fois)…"); await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"); }
-  if(!ocrWorker){ onStep("Préparation…"); ocrWorker=await Tesseract.createWorker("eng"); await ocrWorker.setParameters({tessedit_pageseg_mode:"11"}); }
-  // A cockpit screen (MCDU AOC page) is often shot sideways and its text is scattered: read as sparse text,
-  // turning the photo a quarter turn at a time until the four times are found.
+  if(!ocrWorker){ onStep("Préparation…"); ocrWorker=await Tesseract.createWorker("eng"); }
   const url=URL.createObjectURL(file);
   const img=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=url; });
-  const k=Math.min(1,2400/Math.max(img.naturalWidth,img.naturalHeight)), w=Math.round(img.naturalWidth*k), h=Math.round(img.naturalHeight*k);
-  let best={score:-1,text:""};
-  for(const [i,rot] of [0,90,270,180].entries()){
-    onStep(i?`Lecture de la photo… (sens ${i+1}/4)`:"Lecture de la photo…");
-    const c=document.createElement("canvas"), side=rot%180!==0; c.width=side?h:w; c.height=side?w:h;
-    const g=c.getContext("2d"); g.filter="grayscale(1) contrast(1.4)";
-    g.translate(c.width/2,c.height/2); g.rotate(-rot*Math.PI/180); g.drawImage(img,-w/2,-h/2,w,h);
-    const { data }=await ocrWorker.recognize(c); const text=data.text||"", sc=ocrScore(text);
-    if(sc>best.score) best={score:sc,text};
-    if(sc>=6) break; // four times and labels found: right way up
+  const passes=ocrPasses(img), texts=[];
+  for(const [i,p] of passes.entries()){
+    onStep(`Lecture de la photo… ${i+1}/${passes.length}`);
+    await ocrWorker.setParameters({tessedit_pageseg_mode:p.psm});
+    const { data }=await ocrWorker.recognize(p.draw()); texts.push(data.text||"");
+    const sol=e?ocrSolve(texts.join("\n"),e):null;
+    if(sol&&sol.strong) break; // four times that agree with BLOCK and FLIGHT: done
+    if(!e&&ocrScore(texts.join("\n"))>=6) break;
   }
   URL.revokeObjectURL(url);
-  return best.text;
+  return texts.join("\n");
 }
 // How readable a reading is: Zulu times plus OUT/OFF/ON/IN labels.
 function ocrScore(text){ const t=ocrNorm(text); return (t.match(/\b\d{4}Z\b/g)||[]).length+(t.match(/\b(OUT|OFF|ON|IN)\b/g)||[]).length; }
-// Fixes the usual misreadings of a cockpit screen: "0413Z" read as "04132", "0406ZZ", lower case.
+// Fixes the usual misreadings of a cockpit screen: slashed zero read as @ or Ø, "0413Z" read as "04132", "0406ZZ".
 function ocrNorm(text){
-  return String(text||"").toUpperCase().replace(/\b(\d{2})(\d{2})(?:Z[Z2]?|2Z?)\b/g,(m,h,mi)=>+h<24&&+mi<60?`${h}${mi}Z`:m);
+  return String(text||"").toUpperCase()
+    .replace(/[@ØΘθ⊘](?=\d)|(?<=\d)[@ØΘθ⊘]/g,"0").replace(/(?<=\d)O(?=\d)/g,"0")
+    .replace(/\b(\d{2})(\d{2})(?:Z[Z2]?|2Z?)\b/g,(m,h,mi)=>+h<24&&+mi<60?`${h}${mi}Z`:m);
+}
+// OUT/OFF/ON/IN checked against BLOCK (IN − OUT) and FLIGHT (ON − OFF) when the photo shows them: the four Zulu times
+// that agree with both durations win; a time read badly is rebuilt from the other one and its duration.
+function ocrSolve(text,e){
+  const t=ocrNorm(text), Z=new Set(), D=new Set();
+  for(const m of t.matchAll(/(?<![\d:.])(\d{2})[:.]?(\d{2})\s?Z(?![\d])/g)) if(+m[1]<24&&+m[2]<60) Z.add(+m[1]*60+ +m[2]);
+  for(const m of t.matchAll(/(?<![\d:.])(\d{1,2})[:.H]?(\d{2})(?!\s?Z)(?![\d])/g)){ const v=+m[1]*60+ +m[2]; if(+m[2]<60&&v>=10&&v<=16*60) D.add(v); }
+  const win=m=>{ const x=nearTs(m,e.dep); return x>=e.dep-3*36e5&&x<=e.arr+3*36e5; };
+  const cand=new Map(); for(const m of Z) if(win(m)) cand.set(m,0);
+  for(const z of Z) for(const d of D) for(const m of [(z+d)%1440,(z-d+1440)%1440]) if(win(m)&&!cand.has(m)) cand.set(m,1);
+  const C=[...cand].map(([m,der])=>({m,der,t:nearTs(m,e.dep)})).sort((a,b)=>a.t-b.t).slice(0,24);
+  let best=null; const sched=(e.arr-e.dep)/6e4;
+  for(let a=0;a<C.length;a++) for(let b=a+1;b<C.length;b++){ const tx=(C[b].t-C[a].t)/6e4; if(tx<1||tx>90) continue;
+    for(let c=b+1;c<C.length;c++){ const fl=(C[c].t-C[b].t)/6e4; if(fl<10||fl>16*60) continue;
+      for(let d=c+1;d<C.length;d++){ const ti=(C[d].t-C[c].t)/6e4; if(ti<1||ti>90) continue;
+        const bl=(C[d].t-C[a].t)/6e4, mb=D.has(bl), mf=D.has(fl), der=C[a].der+C[b].der+C[c].der+C[d].der;
+        if(der>(mb&&mf?1:0)) continue;
+        const sc=(mb?4:0)+(mf?4:0)-2*der-Math.abs(bl-sched)/60;
+        if(!best||sc>best.sc) best={sc,strong:mb&&mf,match:(mb?1:0)+(mf?1:0),q:[C[a].m,C[b].m,C[c].m,C[d].m]}; } } }
+  return best;
 }
 const ocrState={}; // per flight: { msg, filled:[keys], text }
 function renderLogTen(){
   const v=document.getElementById("view"); const fl=ltFlights();
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}`;
-  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur le récap Mission+ (Block out, Off, In, Block in en Zulu), puis « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur la page AOC STATUS du MCDU (OUT, OFF, ON, IN, vérifiées avec BLOCK et FLIGHT), puis « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
   if(!fl.length) h+=`<div class="box"><p>Aucun vol sur les 45 derniers jours.</p></div>`;
   for(const e of fl){
     const d=ltData[e.id]||{}, ac=ltAircraft(e), reg=ac.reg, c=ltCheck(e);
@@ -1701,7 +1764,7 @@ function renderLogTen(){
       const file=fileIn.files&&fileIn.files[0]; fileIn.value=""; if(!file) return;
       pbtn.disabled=true; stat.className="ltc-ocr";
       try{
-        const text=await ocrRead(file,m=>stat.textContent=m);
+        const text=await ocrRead(file,m=>stat.textContent=m,e);
         const { res, local, other }=ocrParse(text,e), keys=LT_FIELDS.map(([k])=>k).filter(k=>res[k]);
         const upd={}; keys.forEach(k=>upd[k]=res[k]);
         if(res.reg){ upd.reg=res.reg; upd.type=fleetType(res.reg); }
