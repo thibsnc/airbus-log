@@ -34,7 +34,8 @@
   times, layovers, ground days, days off; never crew names or the roster link) to /api/family with a public token t and a
   private key k (only SHA-256(k) is stored, Netlify Blobs store "family"). `famille.html#t=…` reads it (GET) and computes
   "where is he now / back home at". Synced on every roster change. Changes to it need a `[netlify]` deploy.
-- Version shown in Réglages: run `python3 scripts/bump.py "Short French description"` once per change set to index.html
+- Version shown in Réglages: run `python3 scripts/bump.py "Précis : titre" "Phrase simple et brève"` once per change set to index.html
+  (the second argument is the plain one-line description users read first, in "tu", no jargon; everyone can tap their version to see the list)
   (updates APP_VERSION, adds the line to CHANGELOG, shown when the owner taps his version, and writes version.json).
   Write it for colleagues: they see it in a "Nouveautés" sheet after updating. Add `--admin` for owner-only changes (hidden from them). The owner's app compares it with https://aci-log.netlify.app/version.json.
 - Before every push, verify: fetch the roster from the artifact store (ArtifactData get `roster/current`,
