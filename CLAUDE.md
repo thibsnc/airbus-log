@@ -11,8 +11,7 @@
   The owner's key mode (encrypted `data.json` on GitHub Pages) still works.
   The owner's app may also run in link mode on GitHub Pages: it then calls the Netlify relays cross-origin,
   so /api/roster allows https://thibsnc.github.io and /api/wx allows any origin (CORS). Keep that when editing them.
-- Netlify free plan: 300 credits/month, 15 per production deploy; when they run out the shared site is paused
-  (never billed). `netlify.toml` skips every build unless the commit message contains `[netlify]`.
+- Netlify: the owner upgraded to a paid plan on 2026-10-20 (695 credits left that day); 15 credits per production deploy. `netlify.toml` skips every build unless the commit message contains `[netlify]`.
   Only add `[netlify]` when the owner asks to update the shared version (colleagues), not on routine changes.
   ALWAYS ASK FIRST: even when a change looks like it needs the shared version (server functions, a fix for colleagues),
   finish it on the owner's app, then ask "Je publie pour les collègues (15 crédits) ?" and wait for a yes.
