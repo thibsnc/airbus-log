@@ -148,6 +148,9 @@ body{--dayc:#a77df0;--nightc:#4f30b8}
 .lb-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;color:#fff;padding-top:4px}
 .lb-h h2{margin:0;font-size:22px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .lb-h span{font-size:12.5px;font-weight:600;opacity:.85}
+.lb-h-r{display:flex;align-items:center;gap:10px}
+.lb-arch{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:5px 10px;font:600 12.5px var(--f-ui);cursor:pointer;font-variant-numeric:tabular-nums}
+.lb-arch[aria-pressed="true"]{background:#fff;color:var(--deep);border-color:#fff}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:10px;box-shadow:0 6px 18px rgba(5,15,50,.18)}
 .box h3{margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .box p{margin:0;font-size:13px;color:var(--muted)}
@@ -609,7 +612,7 @@ main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(
 .sd.today{background:linear-gradient(180deg,#fff,#ffe3d1);--edge:linear-gradient(170deg,#f4b223,#e5322d)}
 
 /* LogTen archive */
-.lt-arch-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;width:100%;box-sizing:border-box;
+.lt-arch-tabs{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:4px;padding:4px;border-radius:14px;width:100%;box-sizing:border-box;
   background:color-mix(in srgb,var(--deep) 62%,var(--brand));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)} /* opaque: hides the background circles behind the tabs */
 .lt-arch-tabs button{display:flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:11px;padding:9px 4px;font:700 14px var(--f-ui);color:rgba(255,255,255,.85);background:none;cursor:pointer;min-width:0;white-space:nowrap}
 .lt-arch-tabs button[aria-pressed="true"]{background:#fff;color:var(--deep);box-shadow:0 2px 8px rgba(0,0,0,.18)}
@@ -1560,7 +1563,7 @@ const dmy=t=>{const d=new Date(t);return pad(d.getUTCDate())+"/"+pad(d.getUTCMon
 const ymd=t=>{const d=new Date(t);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());};
 function capacity(role){ const r=(role||"").toUpperCase(); if(/^(CPT|CDB|CMD)/.test(r)) return "PIC"; if(/^(F\/O|OPL|FO|SIC)/.test(r)) return "SIC"; return ""; }
 function crewName(ev,re){ for(const g of ev.crew){ if(re.test(g.role)){ const p=g.people.find(x=>x.code!==ME); if(p) return p.name; } } return ""; }
-const lbState={ book:!["todo","arch"].includes(store.get("lbTab")), arch:store.get("lbTab")==="arch", period:"month", mep:false, skip:new Set(), types: store.get("types")||{} };
+const lbState={ book:false, arch:false, period:"month", mep:false, skip:new Set(), types: store.get("types")||{} };
 async function copyText(text, fallbackId){
   try{ await navigator.clipboard.writeText(text); toast("Copié"); }
   catch(e){ const ta=document.getElementById(fallbackId); if(ta){ ta.hidden=false; ta.value=text; ta.focus(); ta.select(); toast("Sélectionné : copie-le avec Copier"); } }
@@ -1955,7 +1958,7 @@ function ltArchived(e){ const d=ltData[e.id]||{}; if(d.archived===true) return t
 function ltArchiveList(){ return state.events.filter(e=>e.cat==="vol"&&!e.test&&ltData[e.id]&&ltArchived(e)).sort((a,b)=>b.dep-a.dep); }
 function renderLogArchive(){
   const v=document.getElementById("view"), list=ltArchiveList(), todo=ltFlights().filter(e=>!ltArchived(e)).length;
-  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${ltArchTabs(todo,list.length)}`;
+  let h=`<div class="lb">${lbTop(todo,list.length)}`;
   if(!list.length) h+=`<div class="box"><p>Aucun vol archivé. Un vol importé dans LogTen ou exporté pour PILOTLOG arrive ici 10 minutes après, ou tout de suite avec « Archiver ».</p></div>`;
   let curM="";
   for(const e of list){
@@ -1972,16 +1975,21 @@ function renderLogArchive(){
 const LB_IC={book:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
   todo:'<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M5 14v5h14v-5"/>',
   arch:'<rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5.5 8.5V19h13V8.5"/><path d="M10 12h4"/>'};
+// Logbook header: Export is the main tool (first, wider, opens first), Logbook second, Archive a small chip
+// with its count beside "Heures en UTC".
 function ltArchTabs(todo,arch){ const t=lbState.book?"book":lbState.arch?"arch":"todo";
-  const b=(v,l,n)=>`<button data-v="${v}" aria-pressed="${t===v}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LB_IC[v]}</svg>${l}${n?`<span class="n" aria-label="${n} à exporter">${n}</span>`:""}</button>`;
-  return `<div class="lt-arch-tabs" role="tablist">${b("book","Logbook")}${b("todo","Export",todo)}${b("arch","Archive")}</div>`; }
-function bindArchTabs(v){ v.querySelectorAll(".lt-arch-tabs button").forEach(b=>b.onclick=()=>{ lbState.arch=b.dataset.v==="arch"; lbState.book=b.dataset.v==="book"; store.set("lbTab",b.dataset.v); renderLog(); window.scrollTo(0,0); }); }
+  const ic=v=>`<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LB_IC[v]}</svg>`;
+  const b=(v,l,n)=>`<button data-v="${v}" aria-pressed="${t===v}">${ic(v)}${l}${n?`<span class="n" aria-label="${n} à exporter">${n}</span>`:""}</button>`;
+  return `<div class="lt-arch-tabs" role="tablist">${b("todo","Export",todo)}${b("book","Logbook")}</div>`; }
+function lbTop(todo,arch){ const on=lbState.arch;
+  return `<div class="lb-h"><h2>Logbook</h2><div class="lb-h-r"><span>Heures en UTC</span><button class="lb-arch" data-v="arch" aria-pressed="${on}" aria-label="Archive, ${arch} vol${arch>1?"s":""}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LB_IC.arch}</svg>${arch}</button></div></div>${ltArchTabs(todo,arch)}`; }
+function bindArchTabs(v){ v.querySelectorAll(".lt-arch-tabs button,.lb-arch").forEach(b=>b.onclick=()=>{ lbState.arch=b.dataset.v==="arch"; lbState.book=b.dataset.v==="book"; store.set("lbTab",b.dataset.v); renderLog(); window.scrollTo(0,0); }); }
 function renderLogTen(){
   ocrWarmUp();
   if(lbState.book) return renderMyLog();
   if(lbState.arch) return renderLogArchive();
   const v=document.getElementById("view"); const fl=ltFlights().filter(e=>!ltArchived(e));
-  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${ltArchTabs(fl.length,ltArchiveList().length)}`;
+  let h=`<div class="lb">${lbTop(fl.length,ltArchiveList().length)}`;
   const PL=lbApp==="pilotlog";
   h+=`<div class="lb-app-row"><div class="seg lb-app" role="group" aria-label="Mon logbook"><button data-app="logten" aria-pressed="${!PL}">LogTen Pro</button><button data-app="pilotlog" aria-pressed="${PL}">PILOTLOG</button></div>${PL?`<button class="lb-help" id="pl-help-open" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17.2h.01"/></svg>Aide</button>`:""}</div>`;
   h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur la page AOC STATUS du MCDU (OUT, OFF, ON, IN, vérifiées avec BLOCK et FLIGHT), puis ${PL?"« Exporter pour PILOTLOG » et « Import to PILOTLOG »":"« Importer dans LogTen »"}. Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
@@ -2175,7 +2183,7 @@ function renderMyLog(){
   // destinations: number of arrivals at each airport (home base excluded)
   const dest={}; for(const l of legs){ if(l.e.to!=="NOU") dest[l.e.to]=(dest[l.e.to]||0)+1; }
   const dl=Object.entries(dest).sort((a,b)=>b[1]-a[1]), dmax=dl.length?dl[0][1]:1;
-  let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${ltArchTabs(todo,arch)}`;
+  let h=`<div class="lb">${lbTop(todo,arch)}`;
   h+=`<div class="nt-sum my-sum"><div class="nt-fig my-big"><span>Total block · ${t.first?"depuis le "+esc(dmy(t.first)):"vols Aircalin"}</span><b>${hmin(t.blk)}</b><small>${t.n} étape${t.n>1?"s":""}${types?" · "+types:""}</small></div>
     <div class="nt-fig"><span>12 derniers mois</span><b>${hmin(t.y12)}</b><small>${t.partial12&&t.first?`depuis le ${esc(dmy(t.first))}`:"sur 1000 h max"}</small></div>
     <div class="nt-fig"><span>Nuit</span><b>${hmin(t.night)}</b><small>${t.blk?Math.round(t.night/t.blk*100):0} % du total</small></div>
