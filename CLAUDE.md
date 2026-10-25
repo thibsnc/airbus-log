@@ -44,9 +44,9 @@
   Never put the roster file in the repo.
 - The app itself re-runs `checkRoster()` on every roster update and shows the result under the summary tiles.
 - Never commit the roster link or the access key: they live only in GitHub Actions secrets.
-- PILOTLOG export (Logbook → Export → PILOTLOG): default method = an iCal file in the Aircalin feed format (ALEXIS),
-  real OUT/IN written into the Departure/Arrival lines, shared with the iOS share sheet → "Import to PILOTLOG" → CONVERT
-  (PILOTLOG Settings → Airline = Aircalin, interface ALEXIS). Checked by the owner on 2026-10-26: accepted. The wizard CSV
-  (crewlounge.center Import Wizard) is the other method: "Import to PILOTLOG" refuses it ("Wrong file type for your airline");
-  after Save to Files the app opens the wizard itself. Keep the iCal event identical to the feed except the real times.
+- PILOTLOG export (Logbook → Export → PILOTLOG): an iCal file in the Aircalin feed format (ALEXIS), real OUT/IN
+  written into the Departure/Arrival lines, shared with the iOS share sheet → "Import to PILOTLOG" → CONVERT
+  (PILOTLOG Settings → Airline = Aircalin, interface ALEXIS). Checked by the owner on 2026-10-26: accepted.
+  Keep the iCal event identical to the feed except the real times. The owner had the web Import Wizard (CSV) method
+  and the "last file" card removed on 2026-10-26: do not bring them back unless he asks.
 - The owner writes in French and uses an iPhone set to English: give iOS labels in English.
