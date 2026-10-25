@@ -284,7 +284,8 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .ver span{font-size:13.5px;font-weight:600}
 .ver b{font-family:var(--f-mono);font-size:15px;text-align:right}
 .ver small{grid-column:1/-1;font-size:12px;color:var(--muted)}
-.ltc-row:has(.ltc-cam){display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ltc-row:has(.ltc-cam){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch}
+.ltc-row .btn[data-act=import]{white-space:normal;line-height:1.2}
 .ltc-row .btn{padding:11px 8px;font-size:14px;white-space:nowrap;justify-content:center}
 .ltc-row .ltc-ok{grid-column:1/-1}
 @media (max-width:380px){.ltc-row .btn{font-size:12.5px;padding:10px 6px}.ltc-cam svg{display:none}}
@@ -610,6 +611,16 @@ main{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(
 
 /* LogTen archive */
 .lt-arch-tabs{justify-self:center}
+.lb-app{justify-self:center;margin:2px 0}
+.pl-help summary{font-weight:700;cursor:pointer;color:var(--brand-text)}
+.pl-help ol{margin:8px 0 6px;padding-left:20px;display:grid;gap:4px;font-size:13.5px;line-height:1.4}
+.pl-help p{font-size:12.5px;color:var(--muted);margin:6px 0}
+.pl-help{min-width:0}.pl-help a:not(.btn){color:var(--brand-text);font-weight:600}
+.pl-tm{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 8px;margin-top:8px;font-size:13px;font-weight:600}
+.pl-tmn{margin-top:4px!important}
+.pl-help .btn{margin-top:6px;width:100%}
+.pl-all{width:100%;white-space:normal}
+
 .lt-arm{color:#fff;font-weight:800;font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;margin:4px 2px -4px}
 .lt-ar{gap:8px}
 .lt-ar-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -976,10 +987,10 @@ let ME = "SLA";
 // Preview mode: the same page shown inside Claude reads the roster from Claude's own store.
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === "function");
 // App version: bumped by scripts/bump.py on every change (also writes version.json).
-const APP_VERSION = { n:"1.60", date:"2026-10-20" };
+const APP_VERSION = { n:"1.61", date:"2026-10-25" };
 // Changes, newest first. scripts/bump.py "text" adds one line per version (--admin: owner-only, hidden from colleagues).
 const HAD_CACHE = (()=>{ try{ return !!localStorage.getItem("abl:cache"); }catch(_){ return false; } })(); // this device used the app before this load
-const CHANGELOG = [{"n": "1.60", "date": "2026-10-20", "t": "Réglages → Version : chaque mise à jour avec une phrase simple et sa date, pour tout le monde", "d": "Touche ta version pour voir, en clair, ce que chaque mise à jour a apporté."}, {"n": "1.59", "date": "2026-10-20", "t": "Tuile Block : heures réalisées / prévues, comme la Nuit", "d": "La tuile Block montre ce que tu as déjà volé et le total prévu du mois."}, {"n": "1.58", "date": "2026-10-20", "t": "Tuile Block : toucher pour voir le bloc vol par vol (réel ou prévu), avec réalisées, prévues et total du mois", "d": "Touche la tuile Block pour voir tes heures vol par vol."}, {"n": "1.57", "date": "2026-10-20", "t": "Logbook : onglet Archive, les vols importés dans LogTen y passent tout seuls (ou avec « Archiver »), « Remettre » les ramène", "d": "Les vols déjà saisis dans LogTen se rangent seuls dans une archive."}, {"n": "1.56", "date": "2026-10-20", "t": "Détail des heures de nuit : boutons « Réalisées » et « Prévues » (vols à venir)", "d": "Choisis de voir les nuits déjà volées ou celles à venir."}, {"n": "1.55", "date": "2026-10-20", "t": "Détail des heures de nuit : résumé en haut (réalisées, prévues, total du mois) dans une carte bleu Aircalin", "d": "Le total de nuit du mois s'affiche en haut, plus lisible."}, {"n": "1.54", "date": "2026-10-20", "t": "Détail des heures de nuit : choix du mois (ou de l'année) par pastilles, le mois affiché en doré", "d": "Change de mois d'un simple toucher sur les pastilles."}, {"n": "1.53", "date": "2026-10-20", "t": "Détail des heures de nuit : réalisées par défaut (option « Avec prévues »), flèches pour passer d'un mois ou d'une année à l'autre", "d": "Par défaut, seules les nuits déjà volées sont comptées."}, {"n": "1.52", "date": "2026-10-20", "t": "Stats : le détail du calcul de nuit s'ouvre aussi depuis « Nuit · année » et depuis chaque mois du tableau", "d": "Le détail des nuits s'ouvre aussi depuis l'onglet Stats."}, {"n": "1.51", "date": "2026-10-20", "t": "Tuile Nuit : toucher pour voir le calcul vol par vol (heure de référence, bloc, plage de nuit) avec double contrôle", "d": "Touche la tuile Nuit pour voir le calcul de chaque vol."}, {"n": "1.50", "date": "2026-10-20", "t": "Photo LogTen hors ligne : le lecteur est gardé sur le téléphone (préparé à l'ouverture du Logbook avec internet)", "d": "La lecture de photo marche aussi en vol, sans internet."}, {"n": "1.49", "date": "2026-10-20", "t": "Photo LogTen : cadrage plus large de l'écran (la colonne OUT/IN n'est plus coupée) et contrôles de bon sens sur les heures lues", "d": "La photo lit mieux l'écran et vérifie les heures trouvées."}, {"n": "1.48", "date": "2026-10-19", "t": "Photo LogTen : l'écran est lu de plusieurs façons et les résultats sont combinés ; une heure n'est remplie que si BLOCK ou FLIGHT la confirme", "d": "Les heures lues sur la photo sont contrôlées avant d'être remplies."}, {"n": "1.47", "date": "2026-10-19", "t": "Photo LogTen : le texte lu est affiché quand des heures manquent (diagnostic)", "a": 1, "d": "Aide au réglage de la lecture de photo."}, {"n": "1.46", "date": "2026-10-19", "t": "Photo LogTen : l'écran du MCDU est trouvé et recadré tout seul, les heures sont vérifiées avec BLOCK et FLIGHT", "d": "L'app trouve et recadre l'écran du MCDU toute seule."}, {"n": "1.45", "date": "2026-10-19", "t": "Photo LogTen : lit la page AOC STATUS du MCDU (OUT, OFF, ON, IN en Zulu), même photo prise de travers", "d": "Prends en photo la page AOC STATUS : OUT, OFF, ON, IN se remplissent."}, {"n": "1.44", "date": "2026-10-19", "t": "L'app s'ouvre sans internet (en vol, Wi-Fi de bord) avec le dernier roster ; heures de nuit = 18:00–06:00 à l'heure du premier départ de la journée", "d": "L'app s'ouvre même sans réseau, avec ton dernier planning. Nuit comptée de 18h à 6h."}, {"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version", "d": "Après chaque mise à jour, une fenêtre te montre les nouveautés."}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo", "d": "La météo défile en haut ; touche un aéroport pour la lire en entier."}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone", "d": "La page famille se met à jour d'un bouton et explique les soucis."}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)", "d": "La page famille ressemble à l'app."}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)", "d": "Ta famille peut voir ton planning en liste ou en calendrier."}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour", "d": "Touche ta version pour voir l'historique des nouveautés."}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)", "d": "Réglages simplifiés."}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)", "d": "Partage un lien avec ta famille : où tu es et quand tu rentres."}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation", "d": "Vérifie tes limites de temps de vol et de repos (EASA) dans Stats."}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité", "d": "La photo du récap de vol remplit tes heures."}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol", "d": "Les vols déjà faits ne disparaissent plus de ton planning."}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour", "d": "Touche un jour du calendrier pour ne voir que lui."}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous", "d": "Nouveau calendrier : un picto par jour et l'agenda en dessous."}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide", "d": "Touche un aéroport sur un vol pour voir sa météo."}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction", "d": "Rappels plus courts : check-in, départ, arrivée."}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)", "d": "Un rappel la veille au soir en plus de celui avant le vol."}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage", "d": "Réglages rangés par sections."}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix", "d": "Choisis si le rappel vient avant le check-in ou avant le départ."}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1, "d": "Outil de test des rappels."}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1, "d": "Outil de test des rappels."}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée", "d": "Reçois une notification avant ton check-in, même app fermée."}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or", "d": "Le jour choisi ressort mieux dans le calendrier."}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours", "d": "Les tuiles suivent le mois que tu regardes."}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1, "d": "Vol d'essai pour tester."}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien", "d": "Saisie des heures LogTen corrigée sur iPhone."}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape", "d": "Liste des vols du mois plus claire, un jour par ligne."}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service", "d": "Un aller-retour compte pour un seul vol."}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée", "d": "Les vols en passager (MEP) ne sont plus comptés."}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher", "d": "Touche la tuile Vols pour voir la liste du mois."}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px", "d": "Barre du bas mieux placée."}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs", "d": "Barre du bas mieux placée sur iPhone."}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle", "d": "Barre du bas adaptée à chaque iPhone."}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP", "d": "L'app se met à jour toute seule."}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version", "d": "Tire l'écran vers le bas pour actualiser."}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1, "d": "Amis visibles sur l'app du propriétaire."}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1, "d": "Voir le planning d'un ami."}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende", "d": "La tuile Vols montre étapes et vols."}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »", "d": "Tuile Nuit plus claire."}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois", "d": "Tuile Nuit : déjà volé et prévu du mois."}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1, "d": "Ton prénom est demandé une seule fois."}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée", "d": "Option Autoland retirée."}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)", "d": "Saisie des heures plus simple."}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »", "d": "Bouton photo à côté d'Importer dans LogTen."}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1, "d": "Numéro de version affiché."}];
+const CHANGELOG = [{"n": "1.61", "date": "2026-10-25", "t": "Logbook : export PILOTLOG (CrewLounge) vol par vol ou groupé, heures réelles OUT/OFF/ON/IN, PF, approche, équipage, UTC ou local, au format de l'assistant d'import", "d": "Tu utilises PILOTLOG ? Choisis-le dans le Logbook : tes vols partent en un fichier prêt à importer."}, {"n": "1.60", "date": "2026-10-20", "t": "Réglages → Version : chaque mise à jour avec une phrase simple et sa date, pour tout le monde", "d": "Touche ta version pour voir, en clair, ce que chaque mise à jour a apporté."}, {"n": "1.59", "date": "2026-10-20", "t": "Tuile Block : heures réalisées / prévues, comme la Nuit", "d": "La tuile Block montre ce que tu as déjà volé et le total prévu du mois."}, {"n": "1.58", "date": "2026-10-20", "t": "Tuile Block : toucher pour voir le bloc vol par vol (réel ou prévu), avec réalisées, prévues et total du mois", "d": "Touche la tuile Block pour voir tes heures vol par vol."}, {"n": "1.57", "date": "2026-10-20", "t": "Logbook : onglet Archive, les vols importés dans LogTen y passent tout seuls (ou avec « Archiver »), « Remettre » les ramène", "d": "Les vols déjà saisis dans LogTen se rangent seuls dans une archive."}, {"n": "1.56", "date": "2026-10-20", "t": "Détail des heures de nuit : boutons « Réalisées » et « Prévues » (vols à venir)", "d": "Choisis de voir les nuits déjà volées ou celles à venir."}, {"n": "1.55", "date": "2026-10-20", "t": "Détail des heures de nuit : résumé en haut (réalisées, prévues, total du mois) dans une carte bleu Aircalin", "d": "Le total de nuit du mois s'affiche en haut, plus lisible."}, {"n": "1.54", "date": "2026-10-20", "t": "Détail des heures de nuit : choix du mois (ou de l'année) par pastilles, le mois affiché en doré", "d": "Change de mois d'un simple toucher sur les pastilles."}, {"n": "1.53", "date": "2026-10-20", "t": "Détail des heures de nuit : réalisées par défaut (option « Avec prévues »), flèches pour passer d'un mois ou d'une année à l'autre", "d": "Par défaut, seules les nuits déjà volées sont comptées."}, {"n": "1.52", "date": "2026-10-20", "t": "Stats : le détail du calcul de nuit s'ouvre aussi depuis « Nuit · année » et depuis chaque mois du tableau", "d": "Le détail des nuits s'ouvre aussi depuis l'onglet Stats."}, {"n": "1.51", "date": "2026-10-20", "t": "Tuile Nuit : toucher pour voir le calcul vol par vol (heure de référence, bloc, plage de nuit) avec double contrôle", "d": "Touche la tuile Nuit pour voir le calcul de chaque vol."}, {"n": "1.50", "date": "2026-10-20", "t": "Photo LogTen hors ligne : le lecteur est gardé sur le téléphone (préparé à l'ouverture du Logbook avec internet)", "d": "La lecture de photo marche aussi en vol, sans internet."}, {"n": "1.49", "date": "2026-10-20", "t": "Photo LogTen : cadrage plus large de l'écran (la colonne OUT/IN n'est plus coupée) et contrôles de bon sens sur les heures lues", "d": "La photo lit mieux l'écran et vérifie les heures trouvées."}, {"n": "1.48", "date": "2026-10-19", "t": "Photo LogTen : l'écran est lu de plusieurs façons et les résultats sont combinés ; une heure n'est remplie que si BLOCK ou FLIGHT la confirme", "d": "Les heures lues sur la photo sont contrôlées avant d'être remplies."}, {"n": "1.47", "date": "2026-10-19", "t": "Photo LogTen : le texte lu est affiché quand des heures manquent (diagnostic)", "a": 1, "d": "Aide au réglage de la lecture de photo."}, {"n": "1.46", "date": "2026-10-19", "t": "Photo LogTen : l'écran du MCDU est trouvé et recadré tout seul, les heures sont vérifiées avec BLOCK et FLIGHT", "d": "L'app trouve et recadre l'écran du MCDU toute seule."}, {"n": "1.45", "date": "2026-10-19", "t": "Photo LogTen : lit la page AOC STATUS du MCDU (OUT, OFF, ON, IN en Zulu), même photo prise de travers", "d": "Prends en photo la page AOC STATUS : OUT, OFF, ON, IN se remplissent."}, {"n": "1.44", "date": "2026-10-19", "t": "L'app s'ouvre sans internet (en vol, Wi-Fi de bord) avec le dernier roster ; heures de nuit = 18:00–06:00 à l'heure du premier départ de la journée", "d": "L'app s'ouvre même sans réseau, avec ton dernier planning. Nuit comptée de 18h à 6h."}, {"n": "1.43", "date": "2026-10-17", "t": "Nouveautés : après chaque mise à jour, une fenêtre montre ce qui a changé depuis ta dernière version", "d": "Après chaque mise à jour, une fenêtre te montre les nouveautés."}, {"n": "1.42", "date": "2026-10-16", "t": "Bandeau météo : METAR puis TAF qui défilent de droite à gauche ; choisir un aéroport ouvre directement sa météo", "d": "La météo défile en haut ; touche un aéroport pour la lire en entier."}, {"n": "1.41", "date": "2026-10-16", "t": "Page famille : bouton Mettre à jour, messages clairs en cas de souci, lien gardé sur le téléphone", "d": "La page famille se met à jour d'un bouton et explique les soucis."}, {"n": "1.40", "date": "2026-10-16", "t": "Page famille : la Liste reprend la présentation de l'app (un bloc par jour, cartes de vol)", "d": "La page famille ressemble à l'app."}, {"n": "1.39", "date": "2026-10-16", "t": "Page famille : choix Liste / Calendrier (picto par jour, détail du jour touché avec les vols et le retour à la maison)", "d": "Ta famille peut voir ton planning en liste ou en calendrier."}, {"n": "1.38", "date": "2026-10-14", "t": "Réglages → Version : toucher sa version affiche la liste des mises à jour", "d": "Touche ta version pour voir l'historique des nouveautés."}, {"n": "1.37", "date": "2026-10-14", "t": "Réglages : section Couleurs retirée (la palette enregistrée reste)", "d": "Réglages simplifiés."}, {"n": "1.36", "date": "2026-10-14", "t": "Réglages → Famille : lien en lecture seule pour la famille (où je suis, retour à la maison, escales, repos, suivi du vol)", "d": "Partage un lien avec ta famille : où tu es et quand tu rentres."}, {"n": "1.35", "date": "2026-10-14", "t": "Stats : limitations FTL EASA (service 7/14/28 j, temps de vol 28 j / année / 12 mois, FDP max, repos) avec rappel de la réglementation", "d": "Vérifie tes limites de temps de vol et de repos (EASA) dans Stats."}, {"n": "1.34", "date": "2026-10-14", "t": "Photo du récap : lit Block out / Off / In / Block in de Mission+ (In = atterrissage), heures Zulu en priorité", "d": "La photo du récap de vol remplit tes heures."}, {"n": "1.33", "date": "2026-10-14", "t": "Roster : les étapes déjà commencées restent sur l'appareil même si le flux Aircalin les retire après le vol", "d": "Les vols déjà faits ne disparaissent plus de ton planning."}, {"n": "1.32", "date": "2026-10-14", "t": "Calendrier : un jour sélectionné n'affiche que ce jour", "d": "Touche un jour du calendrier pour ne voir que lui."}, {"n": "1.31", "date": "2026-10-14", "t": "Calendrier : le mois sur une carte avec un picto par jour (avions nez à droite) et l'agenda du mois en dessous", "d": "Nouveau calendrier : un picto par jour et l'agenda en dessous."}, {"n": "1.30", "date": "2026-10-14", "t": "Cartes de vol : toucher l'aéroport de départ ou d'arrivée ouvre son METAR/TAF avec lecture rapide", "d": "Touche un aéroport sur un vol pour voir sa météo."}, {"n": "1.29", "date": "2026-10-14", "t": "Rappels et récap : Check-in · ETD · ETA, sans délai, fin de service ni fonction", "d": "Rappels plus courts : check-in, départ, arrivée."}, {"n": "1.28", "date": "2026-10-14", "t": "Alertes : deuxième rappel et récap la veille au soir, rappels plus complets (étapes, temps de vol, retour, fin de service)", "d": "Un rappel la veille au soir en plus de celui avant le vol."}, {"n": "1.27", "date": "2026-10-14", "t": "Réglages en sections dépliables avec résumé de chaque réglage", "d": "Réglages rangés par sections."}, {"n": "1.26", "date": "2026-10-14", "t": "Alertes : rappel avant le check-in ou avant le départ prévu, au choix", "d": "Choisis si le rappel vient avant le check-in ou avant le départ."}, {"n": "1.25", "date": "2026-10-14", "t": "Alertes : bouton « Recevoir un exemple de rappel » réservé à l'app du propriétaire", "a": 1, "d": "Outil de test des rappels."}, {"n": "1.24", "date": "2026-10-14", "t": "Alertes : l'exemple envoie une notification complète sur un vol fictif, identique à un vrai rappel", "a": 1, "d": "Outil de test des rappels."}, {"n": "1.23", "date": "2026-10-14", "t": "Alertes de vol : rappel avant le check-in (30 min à 12 h, activable dans Réglages), notifications Web Push même app fermée", "d": "Reçois une notification avant ton check-in, même app fermée."}, {"n": "1.22", "date": "2026-10-13", "t": "Calendrier : jour sélectionné soulevé avec contour or", "d": "Le jour choisi ressort mieux dans le calendrier."}, {"n": "1.21", "date": "2026-10-10", "t": "Tuiles Vols, Block, Nuit et liste des vols : mois sélectionné en haut au lieu du mois en cours", "d": "Les tuiles suivent le mois que tu regardes."}, {"n": "1.20", "date": "2026-10-10", "t": "Vol TEST de nouveau disponible, uniquement dans l'app du propriétaire", "a": 1, "d": "Vol d'essai pour tester."}, {"n": "1.19", "date": "2026-10-10", "t": "LogTen : saisie des heures de droite à gauche (iOS bloquait le 2e chiffre), vol TEST retiré, trigramme déduit du roster si absent du lien", "d": "Saisie des heures LogTen corrigée sur iPhone."}, {"n": "1.18", "date": "2026-10-10", "t": "Vols du mois : une ligne fermée par jour de vol, étapes au toucher, carte au toucher de l'étape", "d": "Liste des vols du mois plus claire, un jour par ligne."}, {"n": "1.17", "date": "2026-10-10", "t": "Tuile Vols : un vol = un service (étapes enchaînées à moins de 6 h au sol), liste regroupée par service", "d": "Un aller-retour compte pour un seul vol."}, {"n": "1.16", "date": "2026-10-10", "t": "Vols du mois : seulement les vols en fonction (jamais les MEP), fonction OBT/F/O affichée", "d": "Les vols en passager (MEP) ne sont plus comptés."}, {"n": "1.15", "date": "2026-10-10", "t": "Tuile Vols cliquable : liste des vols du mois et carte de vol compacte au toucher", "d": "Touche la tuile Vols pour voir la liste du mois."}, {"n": "1.14", "date": "2026-10-10", "t": "Barre du bas remontée de 8 px", "d": "Barre du bas mieux placée."}, {"n": "1.13", "date": "2026-10-10", "t": "Barre du bas collée au bord de l'écran sur iPhone (plus de bande bleue ni blanche), pour tous les utilisateurs", "d": "Barre du bas mieux placée sur iPhone."}, {"n": "1.12", "date": "2026-10-09", "t": "Barre d'onglets plus basse : collée à la zone du geste d'accueil de l'iPhone, s'adapte à chaque modèle", "d": "Barre du bas adaptée à chaque iPhone."}, {"n": "1.11", "date": "2026-10-09", "t": "Mises à jour de l'app : rechargement automatique quand une nouvelle version est en ligne, service worker sans cache HTTP", "d": "L'app se met à jour toute seule."}, {"n": "1.10", "date": "2026-10-09", "t": "Tirer vers le bas pour actualiser : roster, météo, ami affiché, et rechargement si nouvelle version", "d": "Tire l'écran vers le bas pour actualiser."}, {"n": "1.9", "date": "2026-10-09", "t": "Onglet Amis et liste des utilisateurs visibles aussi quand l'app du propriétaire est ouverte avec son lien de roster", "a": 1, "d": "Amis visibles sur l'app du propriétaire."}, {"n": "1.8", "date": "2026-10-09", "t": "Onglet Amis : voir le roster d'un ami sur l'app du propriétaire", "a": 1, "d": "Voir le planning d'un ami."}, {"n": "1.7", "date": "2026-10-08", "t": "Tuile Vols : étapes / vols avec légende", "d": "La tuile Vols montre étapes et vols."}, {"n": "1.6", "date": "2026-10-08", "t": "Tuile Nuit : légende « réalisées / prévues »", "d": "Tuile Nuit plus claire."}, {"n": "1.5", "date": "2026-10-08", "t": "Tuile Nuit : faite / prévue sur le mois", "d": "Tuile Nuit : déjà volé et prévu du mois."}, {"n": "1.4", "date": "2026-10-08", "t": "Version partagée : prénom/nom demandés une fois, suivi d'utilisation, liste des utilisateurs dans les Réglages du propriétaire", "a": 1, "d": "Ton prénom est demandé une seule fois."}, {"n": "1.3", "date": "2026-10-08", "t": "LogTen : option Autoland retirée", "d": "Option Autoland retirée."}, {"n": "1.2", "date": "2026-10-08", "t": "LogTen : saisie des heures en masque HH:MM (7 → 7:--, 13 → 13:--)", "d": "Saisie des heures plus simple."}, {"n": "1.1", "date": "2026-10-08", "t": "LogTen : bouton « Prendre en photo » à droite de « Importer dans LogTen »", "d": "Bouton photo à côté d'Importer dans LogTen."}, {"n": "1.0", "date": "2026-10-08", "t": "Réglages : numéro de version, et version des collègues sur l'app du propriétaire", "a": 1, "d": "Numéro de version affiché."}];
 let claudeMcp=null, claudeTrigger=null;
 const TZS = { NOU: 11*60, UTC: 0 };
 const WD = ["dim","lun","mar","mer","jeu","ven","sam"];
@@ -1482,17 +1493,7 @@ function logtenURL(rows){
   const pkg={ metadata:{ application:"ACI LOG", version:"1.0", dateFormat:"dd/MM/yyyy", dateAndTimeFormat:"dd/MM/yyyy HH:mm", timesAreZulu:true }, entities };
   return "logten://v2/addEntities?package="+encodeURIComponent(JSON.stringify(pkg));
 }
-function pilotlogCSV(rows){
-  const H=["PILOTLOG_DATE","FLIGHTNUMBER","AF_DEP","AF_ARR","TIME_DEPSCH","TIME_ARRSCH","TIME_DEP","TIME_ARR","TIME_TOTAL","TIME_PIC","TIME_SIC","AC_MODEL","AC_REG","OPERATOR","PILOT1_NAME","PILOT2_NAME","REMARKS"];
-  const q=v=>{ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
-  const lines=[H.join(",")];
-  for(const r of rows){
-    lines.push([ymd(r.date),r.e.flight,icao(r.e.from),icao(r.e.to),hmUTC(r.e.dep),hmUTC(r.e.arr),hmUTC(r.e.dep),hmUTC(r.e.arr),hmm(r.min),
-      r.cap==="PIC"?hmm(r.min):"",r.cap==="SIC"?hmm(r.min):"",r.type,r.reg,"Aircalin",r.pic,r.sic,
-      "ACI LOG"+(r.e.role?" - fonction "+r.e.role:"")+(r.e.cat==="mep"?" - MEP (passager, block "+hmm(r.block)+")":"")].map(q).join(","));
-  }
-  return lines.join("\r\n")+"\r\n";
-}
+function pilotlogCSV(rows){ return plCSV(rows.map(r=>{ const c=r.e.cat==="vol"?ltCheck(r.e):{ok:false}; return plRecord(r.e,c.ok?c.t:null); })); }
 async function copyText(text, fallbackId){
   try{ await navigator.clipboard.writeText(text); toast("Copié"); }
   catch(e){ const ta=document.getElementById(fallbackId); if(ta){ ta.hidden=false; ta.value=text; ta.focus(); ta.select(); toast("Sélectionné : copie-le avec Copier"); } }
@@ -1586,6 +1587,103 @@ function ltSummary(e){
   const c=ltCheck(e);
   if(!c.ok) return c.msg?`<span class="ltc-err">${esc(c.msg)}</span>`:`<span>Block <b>—</b></span><span>Air time <b>—</b></span>`;
   return `<span>Block <b>${hmm(c.block)}</b></span><span>Air time <b>${hmm(c.air)}</b></span><span>Prévu <b>${hmm(Math.round((e.arr-e.dep)/6e4))}</b></span>`;
+}
+/* ---------- PILOTLOG (CrewLounge) ---------- */
+// PILOTLOG has no link that adds a flight like logten:// does: flights go in through its Import Wizard
+// (crewlounge.center), which reads a CSV whose headers are PILOTLOG's own (support article 24000034487).
+// The app builds that file from the same data as the LogTen import (real OUT/OFF/ON/IN, aircraft, crew, PF,
+// approach) and hands it to the iPhone share sheet ("Save to Files"), then the wizard imports it.
+const PL_HEAD=["PILOTLOG_DATE","FLIGHTNUMBER","AF_DEP","AF_ARR","TIME_DEPSCH","TIME_ARRSCH","TIME_DEP","TIME_TO","TIME_LDG","TIME_ARR",
+  "TIME_TOTAL","TIME_AIR","TIME_PIC","TIME_SIC","TIME_NIGHT","TIME_IFR","CAPACITY","PF","TO_DAY","TO_NIGHT","LDG_DAY","LDG_NIGHT",
+  "RWY_ARR","APP_1","AC_MAKE","AC_MODEL","AC_VARIANT","AC_REG","OPERATOR","PILOT1_NAME","PILOT2_NAME","REMARKS"];
+// The 6 headers the wizard refuses a file without, and every header it knows (to catch a typo before the owner does).
+const PL_MANDATORY=["PILOTLOG_DATE","AF_DEP","AF_ARR","TIME_TOTAL","AC_MODEL","AC_REG"];
+const PL_MODEL={ A20N:["A320","NEO"], A339:["A330","900"], A320:["A320",""], A332:["A330","200"], A333:["A330","300"] };
+let plTimeMode=store.get("plTime")==="local"?"local":"utc"; // must match PILOTLOG Settings (UTC or local times)
+let lbApp=store.get("lbApp")==="pilotlog"?"pilotlog":"logten";
+const lbAppName=()=>lbApp==="pilotlog"?"PILOTLOG":"LogTen";
+// ASCII only: no byte-order mark needed, so the first header is always read as PILOTLOG_DATE.
+const plAscii=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\x20-\x7e]/g,"").trim();
+// Offset (minutes) of an airport at ts; falls back to the offset the roster printed for that leg.
+function plOff(e,code,ts){
+  const o=tzOffsetMin(code,ts); if(o!=null) return o;
+  const i=infoOffset(code===e.from?e.info&&e.info.Departure:e.info&&e.info.Arrival); return i!=null?i:null;
+}
+// One flight as a PILOTLOG record. t = real times {out,off,on,in} (ms) or null for the roster's scheduled times.
+function plRecord(e,t,o={}){
+  const d=ltData[e.id]||{}, real=!!t, T=t||{out:e.dep,off:null,on:null,in:e.arr};
+  const loc=plTimeMode==="local";
+  const at=(ts,code)=>{ if(ts==null) return ""; if(!loc) return hmUTC(ts); const off=plOff(e,code,ts); return off==null?null:hmUTC(ts+off*6e4); };
+  const dayOf=(ts,code)=>{ if(!loc) return ymd(ts); const off=plOff(e,code,ts); return off==null?null:ymd(ts+off*6e4); };
+  const mep=e.cat==="mep";
+  const block=Math.round((T.in-T.out)/6e4), min=mep?0:block, cap=mep?"":capacity(e.role);
+  const air=real&&T.off!=null&&T.on!=null?Math.round((T.on-T.off)/6e4):null;
+  const { reg, type }=real?ltAircraft(e):{ reg:regFmt(e.reg), type:(fleetType(regFmt(e.reg))||lbState.types[regFmt(e.reg)]||"").toUpperCase() };
+  const mdl=PL_MODEL[type]||[type,""];
+  const cpt=crewByRole(e,/^(CPT|CDB|CMD)/), fo=crewByRole(e,/^(F\/O|OPL)/);
+  const p1=cap==="PIC"?"SELF":(cpt?crewDisplay(cpt,false):""), p2=cap==="SIC"?"SELF":(fo?crewDisplay(fo,false):"");
+  const night=mep?0:nightOfLeg(e,T.out,T.in);
+  const pf=real&&!mep&&!!d.pf, noff=dutyOffset(e);
+  const r={ PILOTLOG_DATE:dayOf(T.out,e.from), FLIGHTNUMBER:e.flight, AF_DEP:icao(e.from), AF_ARR:icao(e.to),
+    TIME_DEPSCH:at(e.dep,e.from), TIME_ARRSCH:at(e.arr,e.to), TIME_DEP:at(T.out,e.from), TIME_TO:at(T.off,e.from), TIME_LDG:at(T.on,e.to), TIME_ARR:at(T.in,e.to),
+    TIME_TOTAL:hmm(min), TIME_AIR:air!=null&&!mep?hmm(air):"", TIME_PIC:cap==="PIC"?hmm(min):"", TIME_SIC:cap==="SIC"?hmm(min):"",
+    TIME_NIGHT:hmm(night), TIME_IFR:mep?"":hmm(min), CAPACITY:mep?"DH":(cap==="PIC"?"PIC":cap==="SIC"?"SIC":""),
+    PF:mep||!real?"":(pf?"PF":"PM"),
+    TO_DAY:pf&&T.off!=null&&!isNightOff(T.off,noff)?1:(real&&!mep?0:""), TO_NIGHT:pf&&T.off!=null&&isNightOff(T.off,noff)?1:(real&&!mep?0:""),
+    LDG_DAY:pf&&T.on!=null&&!isNightOff(T.on,noff)?1:(real&&!mep?0:""), LDG_NIGHT:pf&&T.on!=null&&isNightOff(T.on,noff)?1:(real&&!mep?0:""),
+    RWY_ARR:real&&d.app?(d.rwy||"").toUpperCase():"", APP_1:real&&d.app?d.app:"",
+    AC_MAKE:type?"Airbus":"", AC_MODEL:mdl[0], AC_VARIANT:mdl[1], AC_REG:reg, OPERATOR:"Aircalin",
+    PILOT1_NAME:p1, PILOT2_NAME:p2,
+    REMARKS:(e.test?"VOL DE TEST ACI LOG - A SUPPRIMER":mep?"MEP - block "+hmm(block):real?"ACI LOG":"ACI LOG - heures du roster").slice(0,50) };
+  return r;
+}
+// Problems that would make the wizard refuse the record, in plain French.
+function plProblems(r){
+  const p=[];
+  if(!r.AC_MODEL) p.push("type d'avion manquant");
+  if(!r.AC_REG||r.AC_REG==="—") p.push("immatriculation manquante");
+  if(!/^[A-Z0-9]{3,4}$/.test(r.AF_DEP)||!/^[A-Z0-9]{3,4}$/.test(r.AF_ARR)) p.push("aéroport inconnu");
+  if(r.PILOTLOG_DATE==null||[r.TIME_DEP,r.TIME_ARR,r.TIME_TO,r.TIME_LDG,r.TIME_DEPSCH,r.TIME_ARRSCH].some(x=>x==null)) p.push("fuseau horaire d'un aéroport inconnu (passe en UTC)");
+  return p;
+}
+function plCSV(records){
+  const q=v=>{ v=plAscii(v); return /[",;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  return [PL_HEAD.join(",")].concat(records.map(r=>PL_HEAD.map(h=>q(r[h])).join(","))).join("\r\n")+"\r\n";
+}
+// Hand the file to the phone: share sheet (Save to Files), else a download, else the clipboard.
+// Resolves true when the owner got the file (so the flight can be marked as sent), false if he cancelled.
+async function plDeliver(csv,name,taId){
+  if(IN_CLAUDE){
+    try{ const dl=await claude.use("downloads"); if(dl){ await dl.save({filename:name,data:csv}); toast("Fichier enregistré"); return true; } }
+    catch(err){ if(err&&err.code==="declined") return false; }
+    copyText(csv,taId); return true;
+  }
+  try{
+    const file=new File([csv],name,{type:"text/csv"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file]}); return true; }
+  }catch(err){ if(err&&err.name==="AbortError") return false; }
+  try{
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=name;
+    document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); return true;
+  }catch(err){ copyText(csv,taId); return true; }
+}
+const PL_WIZARD="https://crewlounge.center/pilotlog-import-wizard";
+// Flights ready to go: the 4 times are valid. Exported ones are kept out unless asked again.
+function plReady(list){ return list.filter(e=>!e.test&&ltCheck(e).ok&&!(ltData[e.id]||{}).sent); }
+async function plExport(list,taId){
+  const recs=[], bad=[];
+  for(const e of list){ const c=ltCheck(e); if(!c.ok) continue; const r=plRecord(e,c.t), p=plProblems(r); if(p.length) bad.push(e.flight+" : "+p.join(", ")); else recs.push([e,r]); }
+  if(bad.length){ toast("Pas exporté — "+bad[0]); return false; }
+  if(!recs.length) return false;
+  const one=recs.length===1, e0=recs[0][0];
+  const name=one?`PILOTLOG_${e0.flight}_${ymd(ltCheck(e0).t.out)}.csv`:`PILOTLOG_${recs.length}-vols_${todayKey()}.csv`;
+  const ok=await plDeliver(plCSV(recs.map(x=>x[1])),name,taId);
+  if(!ok) return false;
+  const now=Date.now();
+  for(const [e] of recs) ltData[e.id]=Object.assign({},ltData[e.id],{sent:now,sentTo:"pilotlog",archived:undefined});
+  ltSave();
+  toast(one?`${e0.flight} exporté : importe le fichier dans l'assistant PILOTLOG`:`${recs.length} vols exportés : importe le fichier dans l'assistant PILOTLOG`);
+  return true;
 }
 /* ---------- Photo of the flight recap: on-device text reading (OCR) ---------- */
 // Labels as they appear on recaps, ACARS prints or logbook screens. Longest forms first, so "BLOCK OFF" is not read as "OFF".
@@ -1819,15 +1917,15 @@ function ltArchiveList(){ return state.events.filter(e=>e.cat==="vol"&&!e.test&&
 function renderLogArchive(){
   const v=document.getElementById("view"), list=ltArchiveList(), todo=ltFlights().filter(e=>!ltArchived(e)).length;
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}${ltArchTabs(todo,list.length)}`;
-  if(!list.length) h+=`<div class="box"><p>Aucun vol archivé. Un vol importé dans LogTen arrive ici 10 minutes après l'import, ou tout de suite avec « Archiver ».</p></div>`;
+  if(!list.length) h+=`<div class="box"><p>Aucun vol archivé. Un vol importé dans LogTen ou exporté pour PILOTLOG arrive ici 10 minutes après, ou tout de suite avec « Archiver ».</p></div>`;
   let curM="";
   for(const e of list){
     const d=ltData[e.id]||{}, c=ltCheck(e), mk=dayKey(e.dep).slice(0,7);
     if(mk!==curM){ curM=mk; h+=`<div class="lt-arm">${MONTHS[+mk.slice(5,7)-1]} ${mk.slice(0,4)}</div>`; }
     const t=k=>d[k]?tmShow(d[k]):"--:--";
-    h+=`<div class="box lt-ar" data-id="${esc(e.id)}"><div class="lt-ar-h"><b>${esc(e.flight)}</b><span>${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(fmtReg(d.reg||e.reg))}</small><em class="lt-ok">✓ LogTen</em></div>
+    h+=`<div class="box lt-ar" data-id="${esc(e.id)}"><div class="lt-ar-h"><b>${esc(e.flight)}</b><span>${esc(e.from)} → ${esc(e.to)}</span><small>${esc(dmy(e.dep).slice(0,5))} · ${esc(fmtReg(d.reg||e.reg))}</small><em class="lt-ok">✓ ${d.sentTo==="pilotlog"?"PILOTLOG":d.sent?"LogTen":"Archivé"}</em></div>
       <div class="lt-ar-t"><span><small>OUT</small>${t("out")}</span><span><small>OFF</small>${t("off")}</span><span><small>ON</small>${t("on")}</span><span><small>IN</small>${t("in")}</span><span class="bl"><small>BLOCK</small>${c.ok?hmm(c.block):"—"}</span></div>
-      <div class="lt-ar-f"><small>${d.sent?`Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}`:"Archivé"}</small><button class="btn ghost" data-act="unarch">Remettre dans la liste</button></div></div>`;
+      <div class="lt-ar-f"><small>${d.sent?`${d.sentTo==="pilotlog"?"Exporté pour PILOTLOG":"Importé"} le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}`:"Archivé"}</small><button class="btn ghost" data-act="unarch">Remettre dans la liste</button></div></div>`;
   }
   h+=`</div>`; v.innerHTML=h; bindLbTabs(v); bindArchTabs(v);
   v.querySelectorAll(".lt-ar [data-act=unarch]").forEach(b=>b.onclick=()=>{ const id=b.closest(".lt-ar").dataset.id; ltData[id]=Object.assign({},ltData[id],{archived:false}); ltSave(); renderLogArchive(); toast("Vol remis dans la liste"); });
@@ -1839,7 +1937,22 @@ function renderLogTen(){
   if(lbState.arch) return renderLogArchive();
   const v=document.getElementById("view"); const fl=ltFlights().filter(e=>!ltArchived(e));
   let h=`<div class="lb"><div class="lb-h"><h2>Logbook</h2><span>Heures en UTC</span></div>${lbTabs()}${ltArchTabs(fl.length,ltArchiveList().length)}`;
-  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur la page AOC STATUS du MCDU (OUT, OFF, ON, IN, vérifiées avec BLOCK et FLIGHT), puis « Importer dans LogTen ». Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  const PL=lbApp==="pilotlog";
+  h+=`<div class="seg lb-app" role="group" aria-label="Mon logbook"><button data-app="logten" aria-pressed="${!PL}">LogTen Pro</button><button data-app="pilotlog" aria-pressed="${PL}">PILOTLOG</button></div>`;
+  h+=`<p class="note" style="color:#fff;opacity:.9;margin:0">Tape les heures réelles en UTC (ex. 0125) ou touche « Prendre en photo » sur la page AOC STATUS du MCDU (OUT, OFF, ON, IN, vérifiées avec BLOCK et FLIGHT), puis ${PL?"« Exporter pour PILOTLOG »":"« Importer dans LogTen »"}. Le vol, l'avion, la route et l'équipage viennent du roster.</p>`;
+  if(PL){
+    const ready=plReady(fl);
+    h+=`<details class="box pl-help" ${store.get("plHelpSeen")?"":"open"}><summary>Comment ça marche avec PILOTLOG</summary>
+      <ol><li>Touche « Exporter pour PILOTLOG » : l'iPhone propose le fichier, choisis <b>Save to Files</b>.</li>
+      <li>Ouvre l'<a href="${PL_WIZARD}" target="_blank" rel="noopener">assistant d'import PILOTLOG</a> (connecté à ton compte CrewLounge), envoie le fichier, puis valide.</li>
+      <li>Les vols arrivent dans l'app PILOTLOG à la synchro suivante.</li></ol>
+      <p>PILOTLOG ne permet pas d'ajouter un vol directement depuis une autre app, comme le fait LogTen : il faut passer par son assistant d'import. Regroupe plusieurs vols dans un seul fichier pour n'importer qu'une fois.</p>
+      <div class="pl-tm"><span>Heures dans mon PILOTLOG</span><div class="seg" id="pl-tm"><button data-t="utc" aria-pressed="${plTimeMode==="utc"}">UTC</button><button data-t="local" aria-pressed="${plTimeMode==="local"}">Locales</button></div></div>
+      <p class="pl-tmn">À régler comme dans PILOTLOG → Settings. ${plTimeMode==="utc"?"Les heures partent en UTC, comme sur le MCDU.":"Les heures partent à l'heure locale de chaque aéroport."}</p>
+      <a class="btn ghost" href="${PL_WIZARD}" target="_blank" rel="noopener">Ouvrir l'assistant d'import</a></details>`;
+    if(ready.length>1) h+=`<button class="btn pl-all" id="pl-all">Exporter les ${ready.length} vols prêts (1 fichier)</button>`;
+    h+=`<textarea class="copyarea" id="pl-ta2" hidden readonly></textarea>`;
+  }
   if(!fl.length) h+=`<div class="box"><p>Rien à remplir : tous tes vols des 45 derniers jours sont dans l'Archive.</p></div>`;
   for(const e of fl){
     const d=ltData[e.id]||{}, ac=ltAircraft(e), reg=ac.reg, c=ltCheck(e);
@@ -1857,12 +1970,17 @@ function renderLogTen(){
         <label class="ltc-app">Approche <select data-o="app"><option value="">—</option>${APP_TYPES.map(a=>`<option ${d.app===a?"selected":""}>${a}</option>`).join("")}</select>
           <input data-o="rwy" placeholder="Piste" maxlength="4" autocomplete="off" value="${esc(d.rwy||"")}"></label>
       </div>
-      <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>Importer dans LogTen</button><button class="btn ghost ltc-cam" data-act="photo"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>Prendre en photo</button><input type="file" accept="image/*" data-a="photo" hidden>${d.sent?`<span class="ltc-ok">Importé le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}${!e.test?`<button class="btn ghost ltc-arch" data-act="arch">Archiver</button>`:""}</div>
+      <div class="ltc-row"><button class="btn" data-act="import" ${c.ok?"":"disabled"}>${PL?"Exporter pour PILOTLOG":"Importer dans LogTen"}</button><button class="btn ghost ltc-cam" data-act="photo"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>Prendre en photo</button><input type="file" accept="image/*" data-a="photo" hidden>${d.sent?`<span class="ltc-ok">${d.sentTo==="pilotlog"?"Exporté pour PILOTLOG":"Importé dans LogTen"} le ${esc(dmy(d.sent).slice(0,5))} à ${esc(hm(d.sent))}</span>`:""}${!e.test?`<button class="btn ghost ltc-arch" data-act="arch">Archiver</button>`:""}</div>
       <div class="ltc-ocr">${ocrState[e.id]?esc(ocrState[e.id].msg):""}</div>${isOwner()&&ocrState[e.id]&&ocrState[e.id].text&&ocrState[e.id].filled.length<4?`<details class="ltc-raw"><summary>Ce que l'app a lu (pour Claude)</summary><pre>${esc(ocrState[e.id].text.replace(/\n{2,}/g,"\n").slice(0,1500))}</pre></details>`:""}
     </div>`;
   }
   h+=`</div>`;
   v.innerHTML=h; bindLbTabs(v); bindArchTabs(v);
+  const rer=()=>{ const y=scrollY; renderLogTen(); scrollTo(0,y); };
+  v.querySelectorAll(".lb-app button").forEach(b=>b.onclick=()=>{ lbApp=b.dataset.app; store.set("lbApp",lbApp); renderLog(); });
+  v.querySelectorAll("#pl-tm button").forEach(b=>b.onclick=()=>{ plTimeMode=b.dataset.t; store.set("plTime",plTimeMode); rer(); });
+  const ph=v.querySelector(".pl-help"); if(ph) ph.addEventListener("toggle",()=>{ if(!ph.open) store.set("plHelpSeen",1); });
+  const pa=v.querySelector("#pl-all"); if(pa) pa.onclick=async()=>{ pa.disabled=true; if(await plExport(plReady(fl),"pl-ta2")) setTimeout(rer,300); else pa.disabled=false; };
   v.querySelectorAll(".ltc").forEach(card=>{
     const id=card.dataset.id, e=fl.find(x=>x.id===id); if(!e) return;
     const refresh=()=>{ const c=ltCheck(e); card.querySelector(".ltc-sum").innerHTML=ltSummary(e); card.querySelector('[data-act="import"]').disabled=!c.ok; };
@@ -1926,16 +2044,17 @@ function renderLogTen(){
       }catch(err){ stat.textContent=navigator.onLine===false&&!store.get("ocrWarm")?"Lecture impossible hors ligne : ouvre une fois le Logbook avec internet pour garder le lecteur sur le téléphone.":"Lecture impossible pour l'instant ("+((err&&err.message)||"erreur")+")."; stat.className="ltc-ocr ltc-err"; pbtn.disabled=false; }
     };
     const ab=card.querySelector('[data-act="arch"]'); if(ab) ab.onclick=()=>{ ltData[id]=Object.assign({},ltData[id],{archived:true}); ltSave(); const y=scrollY; renderLogTen(); scrollTo(0,y); toast("Vol archivé"); };
-    card.querySelector('[data-act="import"]').onclick=()=>{
+    card.querySelector('[data-act="import"]').onclick=async()=>{
       const c=ltCheck(e); if(!c.ok) return;
-      ltData[id]=Object.assign({},ltData[id],{sent:Date.now(),archived:undefined}); ltSave();
+      if(lbApp==="pilotlog"){ if(await plExport([e],"pl-ta2")) setTimeout(rer,300); return; }
+      ltData[id]=Object.assign({},ltData[id],{sent:Date.now(),sentTo:"logten",archived:undefined}); ltSave();
       location.href=ltURL(e,c.t);
       setTimeout(()=>{ const y=scrollY; renderLogTen(); scrollTo(0,y); },800);
     };
   });
 }
 function renderLog(){ lbState.sub==="export" ? renderLogExport() : renderLogTen(); }
-function lbTabs(){ return `<div class="seg lbtabs" id="lb-tabs"><button data-s="logten" aria-pressed="${lbState.sub==="logten"}">LogTen</button><button data-s="export" aria-pressed="${lbState.sub==="export"}">Export</button></div>`; }
+function lbTabs(){ return `<div class="seg lbtabs" id="lb-tabs"><button data-s="logten" aria-pressed="${lbState.sub==="logten"}">${lbAppName()}</button><button data-s="export" aria-pressed="${lbState.sub==="export"}">Export</button></div>`; }
 function bindLbTabs(v){ v.querySelectorAll("#lb-tabs button").forEach(b=>b.onclick=()=>{ lbState.sub=b.dataset.s; store.set("lbsub",lbState.sub); renderLog(); window.scrollTo(0,0); }); }
 function renderLogExport(){
   const v=document.getElementById("view");
@@ -1958,7 +2077,7 @@ function renderLogExport(){
     h+=`<div class="box"><h3>Type d'avion par immatriculation</h3><p>Code OACI du type, par exemple A20N ou A339. Mémorisé sur cet appareil.</p><div class="types">`+
        unknownRegs.map(r=>`<label>${esc(r)}<input id="ty-${esc(r)}" data-reg="${esc(r)}" class="ty" value="${esc(lbState.types[r]||"")}" placeholder="Type" autocomplete="off"></label>`).join("")+`</div></div>`;
   }
-  h+=`<div class="warn">Le roster donne les heures programmées. Elles sont importées comme heures block : corrige-les dans ton logbook si le vol a eu de l'avance ou du retard.</div>`;
+  h+=`<div class="warn">Les vols dont tu as saisi (ou photographié) les heures réelles partent avec ces heures. Les autres partent avec les heures programmées du roster : corrige-les dans ton logbook si le vol a eu de l'avance ou du retard.</div>`;
   h+=`<div class="box"><div class="t">LogTen Pro</div>
      <ol><li>Sur l'iPhone où LogTen est installé, touche « Ouvrir dans LogTen ».</li><li>Si rien ne s'ouvre, touche « Copier le lien », colle-le dans la barre d'adresse de Safari et valide.</li><li>LogTen ajoute les vols. Un vol déjà envoyé est mis à jour, pas dupliqué.</li></ol>
      <div class="btnrow">${sel.length?`<a class="btn" id="lt-open" href="${esc(logtenURL(sel))}">Ouvrir dans LogTen</a><button class="btn ghost" id="lt-copy">Copier le lien</button>`:`<button class="btn" disabled>Ouvrir dans LogTen</button>`}</div>
@@ -1978,22 +2097,7 @@ function renderLogExport(){
   v.querySelectorAll(".ty").forEach(inp=>inp.onchange=()=>{ lbState.types[inp.dataset.reg]=inp.value.trim().toUpperCase(); store.set("types",lbState.types); rerender(); });
   const lc=v.querySelector("#lt-copy"); if(lc) lc.onclick=()=>copyText(logtenURL(selectedRows()),"lt-ta");
   const pc=v.querySelector("#pl-copy"); if(pc) pc.onclick=()=>copyText(pilotlogCSV(selectedRows()),"pl-ta");
-  const pd=v.querySelector("#pl-dl"); if(pd) pd.onclick=async()=>{
-    const csv=pilotlogCSV(selectedRows()); const name=`pilotlog-${todayKey()}.csv`;
-    if(IN_CLAUDE){
-      try{ const dl=await claude.use("downloads"); if(dl){ await dl.save({filename:name,data:csv}); toast("Fichier enregistré"); return; } }
-      catch(err){ if(err && err.code==="declined") return; }
-      copyText(csv,"pl-ta"); return;
-    }
-    try{
-      const file=new File([csv],name,{type:"text/csv"});
-      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; }
-    }catch(err){ if(err && err.name==="AbortError") return; }
-    try{
-      const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=name;
-      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
-    }catch(err){ copyText(csv,"pl-ta"); }
-  };
+  const pd=v.querySelector("#pl-dl"); if(pd) pd.onclick=()=>plDeliver(pilotlogCSV(selectedRows()),`PILOTLOG_${todayKey()}.csv`,"pl-ta");
 }
 
 /* ---------- statistics ---------- */
