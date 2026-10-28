@@ -6,6 +6,19 @@ import { getStore } from "@netlify/blobs";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type,x-admin", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, n);
+// Device kind sent by the app; older versions don't send it, so it is guessed from the browser's User-Agent
+// (an iPad in desktop mode looks like a Mac there).
+const DEVS = new Set(["iPhone", "iPad", "Android", "Tablette Android", "Mac", "PC"]);
+const devOf = (sent, ua) => {
+  if (DEVS.has(sent)) return sent;
+  ua = String(ua || "");
+  if (/iPhone|iPod/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua)) return "iPad";
+  if (/Android/.test(ua)) return /Mobile/.test(ua) ? "Android" : "Tablette Android";
+  if (/Macintosh|Mac OS X/.test(ua)) return "Mac";
+  if (/Windows|Linux|CrOS/.test(ua)) return "PC";
+  return "";
+};
 const env = (k) => (globalThis.Netlify?.env?.get?.(k)) ?? process.env[k];
 
 export default async (req) => {
@@ -22,6 +35,7 @@ export default async (req) => {
     const prev = (await store.get(id, { type: "json" })) || {};
     await store.setJSON(id, {
       id, first, last, trig: clean(b.trig, 3).toUpperCase(), version: clean(b.version, 10), standalone: !!b.standalone,
+      dev: devOf(clean(b.dev, 20), req.headers.get("user-agent")) || prev.dev || "",
       firstSeen: prev.firstSeen || now, lastSeen: now, opens: (prev.opens || 0) + 1,
     });
     return json({ ok: true });
