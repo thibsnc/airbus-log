@@ -4,7 +4,7 @@
 // each phone): this server only relays ciphertext and never sees a roster link. "Both ways" makes A's phone send
 // its own link to B the same way, automatically.
 // Every call is signed by the device: id + secret, checked against the hash kept in the "users" store (usage.mjs).
-//   POST /api/friends { id, sec, act:"dir" }                         → { users:[{id,first,last,trig}] }
+//   POST /api/friends { id, sec, act:"dir" }                         → { users:[{id,first,last,trig,ready}] }
 //   POST /api/friends { id, sec, act:"req", to }                     → request sent
 //   POST /api/friends { id, sec, act:"inbox" }                       → { incoming, outgoing, links, owed }
 //   POST /api/friends { id, sec, act:"answer", from, accept, mutual, iv, ct }
@@ -52,7 +52,7 @@ export default async (req) => {
     for (const { key } of blobs) {
       if (key === id) continue;
       const u = await users.get(key, { type: "json" });
-      if (u && u.pub && u.first) out.push(pub(u));
+      if (u && u.first) out.push({ ...pub(u), ready: !!u.pub }); // everyone who uses the app; "ready" = already on the version with friends
     }
     out.sort((a, c) => String(a.last).localeCompare(String(c.last)) || String(a.first).localeCompare(String(c.first)));
     return json({ users: out });
@@ -60,7 +60,7 @@ export default async (req) => {
 
   if (b.act === "req") {
     const to = await user(b.to);
-    if (!to || !to.pub || to.id === id) return json({ error: "unknown user" }, 404);
+    if (!to || to.id === id) return json({ error: "unknown user" }, 404); // an older app sees the request once it updates
     const prev = await fs.get(qk(to.id, id), { type: "json" });
     if (prev && prev.status === "accepted") return json({ ok: true, status: "accepted" });
     await fs.setJSON(qk(to.id, id), { to: to.id, from: id, status: "pending", at: now });
