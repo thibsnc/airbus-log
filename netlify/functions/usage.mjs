@@ -2,6 +2,7 @@
 // GET: the owner's app lists users; needs the x-admin header to match the ADMIN_CODE environment variable.
 // Roster links are never sent here.
 import { getStore } from "@netlify/blobs";
+import crypto from "node:crypto";
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type,x-admin", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -33,9 +34,15 @@ export default async (req) => {
     if (!first || !last) return json({ error: "name required" }, 400);
     const now = new Date().toISOString();
     const prev = (await store.get(id, { type: "json" })) || {};
+    // Device secret (Amis): its hash is kept on the first ping that sends one; later pings must match it, so
+    // nobody can take over a device's name or friend key. Older apps send none and keep working as before.
+    const sec = String(b.sec || ""), sh = sec.length >= 16 ? crypto.createHash("sha256").update(sec).digest("hex") : "";
+    if (prev.sh && sh !== prev.sh) return json({ error: "device mismatch" }, 403);
+    const pk = (prev.sh || sh) && /^[A-Za-z0-9+/=_-]{40,200}$/.test(String(b.pub || "")) ? String(b.pub) : prev.pub || ""; // a friend key only with a device secret
     await store.setJSON(id, {
       id, first, last, trig: clean(b.trig, 3).toUpperCase(), version: clean(b.version, 10), standalone: !!b.standalone,
       dev: devOf(clean(b.dev, 20), req.headers.get("user-agent")) || prev.dev || "",
+      sh: prev.sh || sh || undefined, pub: pk || undefined, owner: !!b.owner || undefined,
       firstSeen: prev.firstSeen || now, lastSeen: now, opens: (prev.opens || 0) + 1,
     });
     return json({ ok: true });
@@ -47,7 +54,7 @@ export default async (req) => {
     if (req.headers.get("x-admin") !== want) return json({ error: "forbidden" }, 401);
     const { blobs } = await store.list();
     const users = [];
-    for (const { key } of blobs) { const r = await store.get(key, { type: "json" }); if (r) users.push(r); }
+    for (const { key } of blobs) { const r = await store.get(key, { type: "json" }); if (r) { delete r.sh; delete r.pub; users.push(r); } }
     users.sort((a, b) => String(b.lastSeen).localeCompare(String(a.lastSeen)));
     return json({ users });
   }

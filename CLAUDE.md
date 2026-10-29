@@ -44,6 +44,13 @@
   Never put the roster file in the repo.
 - The app itself re-runs `checkRoster()` on every roster update and shows the result under the summary tiles.
 - Never commit the roster link or the access key: they live only in GitHub Actions secrets.
+- Friends (Amis tab, owner and colleagues): friend requests through `netlify/functions/friends.mjs` (/api/friends).
+  Each phone has an ECDH P-256 key pair (private key stays in localStorage "fk") and a device secret ("dsec"; its SHA-256
+  is kept in the users record by usage.mjs, which then refuses pings with another secret). On acceptance the phone sends
+  its roster link AES-GCM-encrypted for the requester only; "both ways" makes the requester's phone deliver its own link
+  the same way. The server (Blobs store "friends": q-<to>-<from> requests, d-<to>-<from> ciphertexts) never sees a link.
+  Notifications go through the push store when the person turned alerts on; the app also shows a pop-up and a badge.
+  A friend opens on his calendar only. Adding by roster link remains as a secondary option. Changes need a `[netlify]` deploy.
 - PILOTLOG export (Logbook → Export → PILOTLOG): an iCal file in the Aircalin feed format (ALEXIS), real OUT/IN
   written into the Departure/Arrival lines, shared with the iOS share sheet → "Import to PILOTLOG" → CONVERT
   (PILOTLOG Settings → Airline = Aircalin, interface ALEXIS). Checked by the owner on 2026-10-26: accepted.
